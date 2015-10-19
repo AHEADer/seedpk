@@ -14,10 +14,20 @@ enum Category {
     Symbol,
 };
 
+enum State {
+    BeginState,
+
+};
+
 void nextchar()
 {
     c = getchar();
     column += 1;
+}
+
+void addToken(enum Category type)
+{
+
 }
 
 int spilt(const char* _argv);
@@ -40,9 +50,20 @@ int spilt(const char* _argv)
         printf("cannot read file!");
         return -1;
     }
+    enum State s = BeginState;
 	while(c!=EOF){
 		nextchar();
-		putchar(c);
+        switch(s){
+            case BeginState:
+                switch(c){
+                    case '/':
+                        nextchar();
+                        switch(c) {
+                            case '*':
+                        }
+                }
+        }
+		
 	}
 
 }
