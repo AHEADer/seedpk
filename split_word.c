@@ -60,6 +60,16 @@ int spilt(const char* _argv)
                         nextchar();
                         switch(c) {
                             case '*':
+                                nextchar();
+                                while(c!='*')
+                                    putchar(c);
+                                nextchar();
+                                if(c=='/')
+                                    addToken(Sentence);
+                            case '/':
+                                nextchar();
+                                while(c!='\n'&&c!=EOF)
+                                    nextchar();
                         }
                 }
         }
