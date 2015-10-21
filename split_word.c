@@ -19,6 +19,7 @@ enum Category {
     Block,
     Variable,
     Value,
+    Space,
 };
 
 enum State {
@@ -42,7 +43,10 @@ void addToken(enum Category type)
     *p = '\0';
     p = value;
     int len = strlen(p);
-        printf("%s %d 0\n", p, type);
+    if(type == Space)
+        return;
+    else
+    printf("%s %d %d 0\n", p, type, len);
 }
 
 void rollback() {
@@ -57,7 +61,7 @@ void delSpace() {
 }
 
 
-int spilt(const char* _argv);
+void spilt(const char* _argv);
 
 int main(int argc, char const *argv[])
 {
@@ -66,22 +70,22 @@ int main(int argc, char const *argv[])
         exit(-1);
     }
     spilt(argv[1]);
-    
+
     return 0;
 
 }
 
-int spilt(const char* _argv)
+void spilt(const char* _argv)
 {
     if(!freopen(_argv,"r",stdin)){
         printf("cannot read file!");
-        return -1;
+        return ;
     }
     enum State s = BeginState;
-	while(c!=EOF){
-		nextchar();
+    while(c!=EOF){
         switch(s){
             case BeginState:
+                nextchar();
                 switch(c){
                     case '/':
                         nextchar();
@@ -99,13 +103,17 @@ int spilt(const char* _argv)
                                 s = BeginState;
                                 break;
                         }
+                        break;
                     case '@':
                         s = VariableState;
+                        nextchar();
                         break;
                     case '#':
+                        nextchar();
                         s = IDState;
                         break;
                     case '.':
+                        nextchar();
                         s = ClassState;
                         break;
                     default:
@@ -139,22 +147,26 @@ int spilt(const char* _argv)
                         nextchar();
                         s = ValueState;
                         break;
-
+                    case ' ':
+                        rollback();
+                        break;
                     default:
                         nextchar();
-                        s = VariableState;        
+                        s = VariableState;
                 }
                 break;
             case ValueState:
                 switch(c){
                     case ' ':
-                        //delSpace();
+                        addToken(Space);
                         nextchar();
-                        printf("haha\n");
                         s = ValueState;
                         break;
                     case ';':
+                        rollback();
                         addToken(Value);
+                        nextchar();
+                        addToken(Block);
                         s = BeginState;
                         break;
                     default:
@@ -162,9 +174,15 @@ int spilt(const char* _argv)
                         s = ValueState;
                 }
                 break;
+            case ClassState:
+                nextchar();
+                break;
+            case IDState:
+                nextchar();
+                break;
         }
-		
-	}
+
+    }
 
 }
 
