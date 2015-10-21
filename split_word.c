@@ -25,6 +25,7 @@ enum Category {
 enum State {
     BeginState,
     AnnotationState,
+    AnnotationDelState,
     VariableState,
     ClassState,
     IDState,
@@ -95,12 +96,8 @@ void spilt(const char* _argv)
                                 nextchar();
                                 break;
                             case '/':
-                                c = getchar();
-                                while(c!='\n'&&c!=EOF){
-                                    c = getchar();
-                                }
-                                c = getchar();
-                                s = BeginState;
+                                nextchar();
+                                s = AnnotationDelState;
                                 break;
                         }
                         break;
@@ -188,6 +185,18 @@ void spilt(const char* _argv)
             case IDState:
                 nextchar();
                 break;
+            case AnnotationDelState:
+                if(c == '\n' || c == '\r'){
+                    addToken(Space);
+                    s = BeginState;
+                }
+                else{
+                    nextchar();
+                    s = AnnotationDelState;
+                }
+                break;
+            default:
+                nextchar();
         }
 
     }
