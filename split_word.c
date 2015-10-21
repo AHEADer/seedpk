@@ -117,12 +117,15 @@ void spilt(const char* _argv)
                         s = ClassState;
                         break;
                     default:
+                        addToken(Space);
+                        s = BeginState;
                         break;
                 }
                 break;
             case AnnotationState:
                 switch(c){
                     case '*':
+                        nextchar();
                         switch(c){
                             case '/':
                                 addToken(Sentence);
@@ -130,10 +133,15 @@ void spilt(const char* _argv)
                                 break;
                             default:
                                 nextchar();
+                                printf("%c\n");
                                 s = AnnotationState;
                         }
+                        break;
 
                     default:
+                        //printf("%c\n",c);
+                        nextchar();
+                        s = AnnotationState;
                         break;
                 }
                 break;
