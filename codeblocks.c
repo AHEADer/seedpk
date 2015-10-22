@@ -22,6 +22,28 @@ enum Category {
     Space,
     Element,
     Key,
+    Num,
+    DelAll,
+    RAW_TEXT,
+    SELECTTOR_NAME,
+    BLOCK_BEGIN,
+    BLOCK_END,
+    SEPARATOR,
+    VAR_DEFINE,
+    VAR_NAME,
+    VAR_ASSIGN,
+    INT,
+    FLOAT,
+    COLOR,
+    STRING,
+    OPERATOR,
+    PROPERTY_NAME,
+    PROPERTY_ASSIGN,
+    MAX_IN,
+    FUNC_NAME,
+    FUNC_ARGUMENT_BEGIN,
+    FUNC_ARGUMENT_END
+
 };
 
 enum State {
@@ -34,6 +56,8 @@ enum State {
     ValueState,
     ElementState,
     KeyState,
+    NumState,
+    ColorState,
 };
 
 void nextchar()
@@ -45,13 +69,22 @@ void nextchar()
 
 void addToken(enum Category type)
 {
-    *p = '\0';
-    p = value;
     int len = strlen(p);
-    if(type == Space)
+    if (type == DelAll)
+    {
+        *p = '\0';
+        p = value;
         return;
-    else
-    printf("%s %d %d 0\n", p, type, len);
+    }
+    if(type == Space){
+        p--;
+        return;
+    }
+    else{
+       *p = '\0';
+        p = value;
+        printf("%s %d %d 0\n", p, type, len);
+    }
 }
 
 void rollback() {
@@ -103,6 +136,9 @@ void spilt(const char* _argv)
                                 nextchar();
                                 s = AnnotationDelState;
                                 break;
+                            case ' ':
+                                rollback();
+                                addToken(OPERATOR);
                         }
                         break;
                     case '@':
@@ -119,19 +155,55 @@ void spilt(const char* _argv)
                         break;
                     case '{':
                         addToken(Block);
-                        s = ElementState;
+                        //s = ElementState;
                         break;
                     case '}':
                         addToken(Block);
-                        s = BeginState;
+                        //nextchar();
+                        //s = BeginState;
                         break;
                     case '\n': case '\r':
                         addToken(Space);
-                        s = BeginState;
+                        //nextchar();
+                        //s = BeginState;
+                        break;
+                    case ' ':
+                        addToken(Space);
+                        //nextchar();
+                        break;
+                    case '+':case '*':
+                        addToken(OPERATOR);
+                        //nextchar();
+                        break;
+                    case '-':
+                        nextchar();
+                        switch(c) {
+                            case ' ':
+                                rollback();
+                                addToken(OPERATOR);
+                                //nextchar();
+                                break;
+                            case '/':
+                                nextchar();
+                                s = AnnotationDelState;
+                                break;
+                            }
+                            break;
+                    case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                        s = NumState;
+                        break;
+                    case ':':
+                        rollback();
+                        addToken(Element);
+                        nextchar();
+                        addToken(Block);
+                        nextchar();
+                        s = ValueState;
                         break;
                     default:
-                        addToken(Space);
-                        s = BeginState;
+                        //nextchar();
+                        //addToken(Space);
+                        //s = BeginState;
                         break;
                 }
                 break;
@@ -189,6 +261,45 @@ void spilt(const char* _argv)
                         addToken(Block);
                         s = BeginState;
                         break;
+                    case '+':case '*':
+                        if (value[0]=='+'||value[0]=='*')
+                        {
+                            addToken(OPERATOR);
+                        }
+                        else if(value[0]<='9'&&value[0]>='0'){
+                            rollback();
+                            addToken(Num);
+                            nextchar();
+                            addToken(OPERATOR);
+                        }
+                        else{
+                            rollback();
+                            addToken(Value);
+                            nextchar();
+                            addToken(OPERATOR);
+                        }
+                        nextchar();
+                        break;
+                    case '-':
+                        nextchar();
+                        switch(c) {
+                            case ' ':
+                                rollback();
+                                addToken(OPERATOR);
+                                //nextchar();
+                                break;
+                            case '/':
+                                nextchar();
+                                s = AnnotationDelState;
+                                break;
+                            }
+                            break;
+                    case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                        s = NumState;
+                        break;
+                    case '#':
+                        s = ColorState;
+                        break;
                     default:
                         nextchar();
                         s = ValueState;
@@ -217,7 +328,7 @@ void spilt(const char* _argv)
                 break;
             case AnnotationDelState:
                 if(c == '\n' || c == '\r'){
-                    addToken(Space);
+                    addToken(DelAll);
                     s = BeginState;
                 }
                 else{
@@ -261,6 +372,44 @@ void spilt(const char* _argv)
             case KeyState:
                 break;
 
+            case NumState:
+                nextchar();
+                switch(c){
+                    case ' ':
+                        rollback();
+                        addToken(Num);
+                        nextchar();
+                        addToken(Space);
+                        s = ValueState;
+                        break;
+                    case ';':
+                        rollback();
+                        addToken(Num);
+                        nextchar();
+                        addToken(Block);
+                        s = BeginState;
+                        break;
+                    default:
+                        nextchar();
+                }
+                break;
+            case ColorState:
+                switch(c){
+                    case ';':
+                        rollback();
+                        addToken(COLOR);
+                        nextchar();
+                        addToken(Block);
+                        s = BeginState;
+                        break;
+                    case ' ':
+                        addToken(Space);
+                        nextchar();
+                        break;
+                    default:
+                        nextchar();
+                }
+                break;
             default:
                 nextchar();
         }
