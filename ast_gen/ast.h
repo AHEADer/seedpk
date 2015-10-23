@@ -84,7 +84,7 @@ struct ast_node
         COMMENT,
         SELECTOR,  //No value, has NAME and CONTENT
         PROPERTY,  //No value, has NAME and VALUE
-        NAME,      //No value, has RAW_TEXT and OPERATION in step one and only VALUE in step two
+        NAME,      //No value, has RAW_TEXT and VAR_CALL in step one and only VALUE in step two
         CONTENT, //No value, has all other TYPE
         /*TEMP TYPE USED IN STEP ONE*/
         RESERVERED,
@@ -92,6 +92,7 @@ struct ast_node
         FUNC_CALL, //No value
         FUNC_ARGUMENT, //No value
         VAR_DEFINE, //No value
+        VAR_CALL,
         STRING,
         OPERATION,
     } type;
@@ -99,6 +100,7 @@ struct ast_node
     {
         char *value;
         _operation *op;
+        _var_call *var_call;
     };
     ast_node *next_node;
     ast_node *child_node;
@@ -134,7 +136,7 @@ private:
     } state;
 
     ast_node *make_node(ast_node *current_node, ast_node *content_node, ast_node::TYPE t);
-    ast_node *make_name(ast_node *parent_node);
+    ast_node *make_name();
     _operation *make_operation();
     _var_call *make_var_call();
     int sub_block_parser(ast_node *content_node);
