@@ -16,7 +16,6 @@ struct token_list_elem
         SEPARATOR,
         COMMA,
         VAR_DEFINE,
-        VAR_NAME,
         VAR_ASSIGN,
         INT,
         FLOAT,

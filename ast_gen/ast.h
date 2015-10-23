@@ -3,22 +3,34 @@
 
 #include "token_list.h"
 
+struct _var_call
+{
+    int undef_times;
+    char *name;
+};
+
 struct _operation
 {
     enum TYPE
     {
         INT,
         FLOAT,
-        VAR,
+        COLOR,
+        VAR_CALL,
+        STRING,
         OPERATOR
-    };
+    } type;
     union {
         int i_val;
         float f_val;
-        char *var_name;
+        _var_call *var;
+        char *s_string;
         char op;
     };
+    _operation *next;
 };
+
+struct ast_node;
 
 struct _var
 {
@@ -27,8 +39,10 @@ struct _var
         NEW_FLAG,
         INT,
         FLAOT,
+        COLOR,
         STRING,
-        NUMBER //use before calculate
+        FUNC,
+        UNDECIDED //use before calculate
     } type;
     char *name;
     union
@@ -36,12 +50,14 @@ struct _var
         int v_int;
         float v_float;
         char * v_string;
+        ast_node *func;
+
     };
     union
     {
         _operation *op_list;
         char *string_with_var;
-    }
+    };
     struct _var *next;
     _var(TYPE t):
         type(t),
@@ -52,7 +68,7 @@ struct _var
     {
 
     }
-    ~var()
+    ~_var()
     {
         if (type != STRING)
             delete op_list;
@@ -68,7 +84,7 @@ struct ast_node
         COMMENT,
         SELECTOR,  //No value, has NAME and CONTENT
         PROPERTY,  //No value, has NAME and VALUE
-        NAME,      //No value, has VALUE and OPERATION in step one and only VALUE in step two
+        NAME,      //No value, has RAW_TEXT and OPERATION in step one and only VALUE in step two
         CONTENT, //No value, has all other TYPE
         /*TEMP TYPE USED IN STEP ONE*/
         RESERVERED,
@@ -108,7 +124,6 @@ class ast_gen
 {
 private:
     ast_node *root_node;
-    ast_node *func_node;
     token_list tokens;
     token_list_elem *parsing;
 
@@ -120,13 +135,13 @@ private:
 
     ast_node *make_node(ast_node *current_node, ast_node *content_node, ast_node::TYPE t);
     ast_node *make_name(ast_node *parent_node);
-    ast_node *access_operation();
+    _operation *make_operation();
+    _var_call *make_var_call();
     int sub_block_parser(ast_node *content_node);
 
 public:
     ast_gen(token_list& tokenlist):
-        root_node(new ast_node(ast_node::TYPE::ROOT, nullptr, nullptr, new _var(1))),
-        func_node(new ast_node(ast_node::TYPE::ROOT, nullptr, nullptr, new _var(1))),
+        root_node(new ast_node(ast_node::TYPE::ROOT, nullptr, nullptr, new _var(_var::NEW_FLAG))),
         tokens(tokenlist),
         parsing(tokens.head),
         state(STATE_NORMAL)
