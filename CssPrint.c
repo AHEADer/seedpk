@@ -44,7 +44,7 @@ void print_content(FILE *input, ast_node *node);
 
 
 int main(){return 0;}
-////////////////////////////////////////////define a linkstact store 'Less Nest'(嵌套
+////////////////////////////////////////////define a linkstact store Less Nest(嵌套
 typedef struct NODE
 {   ast_node *data;
     struct NODE *next;
@@ -132,7 +132,7 @@ void print_node(FILE *input, ast_node *node)
             {
                 ParentSelectorName[i] = tmp->child_node->value;
             }
-            print_node(input, Nested->child_node);
+            print_node(input, Nested);
         }
 
         switch(Node->type)
@@ -185,7 +185,6 @@ void print_node(FILE *input, ast_node *node)
         Node = Next;
     }
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////////
