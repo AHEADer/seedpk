@@ -3,84 +3,182 @@
  *
  * */
 
+ #define sstrjoin(...)    _sstrjoin(__VA_ARGS__, NULL)
+char *_sstrjoin(char *buf, char *delim, ...)
+{
+    char *p, *res, *d;
+    int i = 0;
+    va_list ap;
+    va_start(ap, delim);
+    res = buf;
+    p = va_arg(ap, char *);
+    while(p)
+    {
+        while(*res++ = *p++)
+            /* do nothing */;
+        res--;
+        if(p = va_arg(ap, char *))
+        {
+            d = delim;
+            while(*res++ = *d++)
+                /* do nothing */;
+            res--;
+        }
+    }
+    *res = '\0';
+    va_end(ap);
+    return buf;
+}
+
 #include "CssPrint.h"
-int CssPrint_main(Css_Node *root, const char *filename, const char *head);
+int CssPrint_main(ast_node *root, const char *filename, const char *head);
 void *close_file(const char *filename, FILE *file);
 FILE *open_file(const char *filename, const char *opt);
 void write_file(FILE *input, const char *content, int opt);
-void print_node(FILE *input, Css_Node *node);
-void print_content(FILE *input, Css_Node *node);
+void print_node(FILE *input, ast_node *node);
+void print_content(FILE *input, ast_node *node);
 
 void main(){}
 
-int CssPrint_main(Css_Node *root, const char *filename, const char *head)
+typedef struct NODE
+{   ast_node *node;
+    struct NODE *next;
+}stack, *LinkStact;
+
+LinkStact Init_LinkStack(){
+     return NULL;
+}
+
+LinkStack PushS(LinkStack top, ast_node x)
 {
-    Css_Node *node;
-    Css_Node *nest;
-    Css_Node *next;
+    StackNode *s;
+    s=malloc( sizeof(StackNode) );
+    s->data=x;
+    s->next=top;
+    top=s;
+    return top;
+}
+
+LinkStack PopS(LinkStack top, ast_node *x)
+{
+    StackNode *p;
+    if （top= =NULL） return NULL;
+    else
+    {
+        *x = top->data;
+        p = top;
+        top = top->next;
+        free (p);
+        return top;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+
+int CssPrint_main(ast_node *root, const char *filename)
+{
+    ast_node *node;
+    ast_node *nest;
+    ast_node *next;
     node = root;
+
+    char* ParentSelectorName[128];
 
     FILE *css_file;
     css_file = open_file(filename, "w");
 
-    if (head)
-        write_file(css_file, head, 0);
-
-    print_node(css_file, root);
+    if (root.type == ROOT)
+        print_node(input, root->child_node);
+    else
+        print_node(stdout, root);
 
 }
 
-void print_node(FILE *input, Css_Node *node)
+void print_node(FILE *input, ast_node *node)
 {
-    Css_Node *Nest;
-    Css_Node *Node;
-    char node_name[MAXNAMELEN] = {""};
+    ast_node *Node;
+    ast_node *Next;
+    ast_node *Child;
+    ast_node *Parent;
+    ast_node *Nested;
 
     Node = node;
+    Next = node->next_node;
+    Child = node->child_node;
+
+    char buf[128];
+    int i;
+    ast_node *tmp;
+
+    LinkStact NestedStack = Init_LinkStack();
+
+    int flag;
+
     while(Node)
     {
-        strcat(node_name, node->name);
-        print_content(input, node);
-
-        Nest = Node->nest;
-        while(Nest)
+        if (NestedStack)
         {
-            Nest->name = node_name;
-            print_node(input, Nest);
-
-            Nest = Nest->nest;
+            NestedStack = PopS(NestedStack, Nested);
+            for ( i = 0, tmp = Nested->child; tmp.type == NAME ; ++i, tmp = tmp->Nested)
+            {
+                ParentSelectorName[i] = tmp->children->value;
+            }
+            print_node(input, Nested);
         }
 
-        Node = Node->next;
+        swtich(Node.type)
+        {
+        case RAW_TEXT:
+            write_file(input, Node->value);
+            break;
+
+        case COMMENT:   // 评论 has RAW_TEXT->value
+            print_node(input, child);
+            break;
+
+        case SELECTOR:   // 选择器 has NAME and CONTENT
+            NestedStack = PushS(NestedStack, Node);
+            break;
+
+        case PROPERTY:   // 属性 has NAME and RAW_TEXT
+            print_node(input, Child);
+            fwrite(";\n", 2, 1, input);
+            break;
+
+        case NAME:      // 名字 has RAW_TEXT
+            if (Parent.type == SELECTOR)
+            {
+                sstrjoin(bufi,"",""); //init
+                for ( ; i >= 0 ; --i )
+                {
+                    sstrjoin(buf, "", buf, ParentSelectorName[i], " ", Child->value);
+                    if ( i > 0 )
+                         sstrjoin(buf, "", buf, ",");
+                }
+                Child->value = buf;
+            }
+
+            print_node(input, Child);
+            if (Next.type == NAME)
+                fwrite(",", 1, 1, input);
+            else if (Parent.type == PROPERTY)
+                fwrite(":", 1, 1, input);
+
+            break;
+
+        case CONTENT:   // 子块 has all other TYPE
+            fwrite("{\n", 2, 1, input);
+            print_node(input, Child);
+            fwrite("}\n", 2, 1, input);
+            break;
+        }
+        Node = Next;
     }
 }
 
-
-void print_content(FILE *input, Css_Node *node)
+void write_file(FILE *input, const char *content)
 {
-
-    if(node->name)
-    {
-        write_file(input, node->name, 0);
-        write_file(input, node->content, 1);
-
-    }
-    else
-        write_file(input, node->content, 0);
-}
-
-void write_file(FILE *input, const char *content, int opt)
-{
-    if(opt == 0)
-    {
-        fwrite(content, sizeof(content), 1, input);
-    }
-    else if(opt == 1)
-    {
-        fwrite("{\n", 2, 1, input);
-        fwrite(content, sizeof(content), 1, input);
-        fwrite("\n}\n", 3, 1, input);
-    }
+    fwrite(content, sizeof(content), 1, input);
 }
 
 
