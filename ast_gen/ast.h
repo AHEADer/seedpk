@@ -81,7 +81,7 @@ struct ast_node
     {
         ROOT, //No value, has CONTENT
         RAW_TEXT,
-        COMMENT,
+        COMMENT,   //No value, has RAW_TEXT
         SELECTOR,  //No value, has NAME and CONTENT
         PROPERTY,  //No value, has NAME and VALUE
         NAME,      //No value, has RAW_TEXT and VAR_CALL in step one and only VALUE in step two
