@@ -6,48 +6,43 @@
  *Class选择器:.定义
  *
  */
-//TODO
-//#111
 int line = 0, column = 0;
 char is_float = 'n';
 char value[64];
 char c , *p = value;
 
 enum Category {
-    Sentence,
-    ID_selector,//1
-    Class_selector,
-    Symbol,
-    Block,
-    Variable,//5
-    Value,
-    Space,
-    Element,
-    Key,
-    Num,//10
-    DelAll,
-    Argument_name,
-    Argument_content,
-
-    RAW_TEXT, //14
+    RAW_TEXT, //0
     SELECTOR_NAME,
     BLOCK_BEGIN,
     BLOCK_END,
     SEPARATOR,
-    COMMA,
-    VAR_DEFINE,//20
+    COMMA,    //5
+    VAR_DEFINE,
     ASSIGN,
     INT,
     FLOAT,
-    COLOR,
-    STRING,//25
+    COLOR,     //10
+    STRING,
     OPERATOR,//()while calculate
     PROPERTY_NAME,
     FUNC_NAME,
-    FUNC_ARGUMENT_BEGIN,
+    FUNC_ARGUMENT_BEGIN, //15
     FUNC_ARGUMENT_END,
-    COMMENT,
+    COMMENT,             //17
+    Space,
+    DelAll,
 };
+
+typedef struct word_list
+{
+    char content[64];
+    enum Category type;
+    struct word_list* next;
+}WORD_LIST;
+
+//WORD_LIST *head;
+WORD_LIST *pp;
 
 enum State {
     BeginState,
@@ -64,6 +59,18 @@ enum State {
     ArgumentState,
     FuncState,
 };
+
+void Store_in_list(enum Category type, char* value)
+{
+    while(pp->next != NULL){
+        pp = pp->next;
+    }
+    pp->next = (WORD_LIST*)malloc(sizeof(*pp));
+    pp->next->type = type;
+    strcpy(pp->next->content,value);
+    //pp->next = NULL;
+    pp = pp->next;
+}
 
 void nextchar()
 {
@@ -88,9 +95,11 @@ void addToken(enum Category type)
     if (type == FUNC_NAME)
     {
         printf("%s %d %d 0\n"," ", type, len);
+        Store_in_list(type,"");
         enum Category raw = RAW_TEXT;
         *p = '\0';
         p = value;
+        Store_in_list(raw,p);
         printf("%s %d %d 0\n", p, raw, len);
     }
     if (type == COLOR)
@@ -106,10 +115,12 @@ void addToken(enum Category type)
             value[3] = value[2];
             value[2] = value[1];
             p = value;
+            Store_in_list(type,p);
             printf("%s %d %d 0\n", p, type, len);
         }
         else{
             p =value;
+            Store_in_list(type,p);
             printf("%s %d %d 0\n", p, type, len);
         }
         
@@ -117,6 +128,7 @@ void addToken(enum Category type)
     else{
        *p = '\0';
         p = value;
+        Store_in_list(type,p);
         printf("%s %d %d 0\n", p, type, len);
     }
 }
@@ -132,7 +144,15 @@ void delSpace() {
     column --;
 }
 
-
+void print_list(WORD_LIST **head){
+    WORD_LIST *p = (*head)->next;
+    printf("hahahaha\n");
+    while(p!=NULL)
+    {
+        printf("content:%s\n",p->content );
+        p = p->next;
+    }
+}
 void spilt(const char* _argv);
 
 int main(int argc, char const *argv[])
@@ -141,7 +161,14 @@ int main(int argc, char const *argv[])
         printf("input error!\n");
         exit(-1);
     }
+
+    pp = NULL;
+    WORD_LIST *init = (WORD_LIST*)malloc(sizeof(*init));
+    pp = init;
+    init->next = NULL;
     spilt(argv[1]);
+    //init = init->next;
+    print_list(&init);
 
     return 0;
 
@@ -251,7 +278,7 @@ void spilt(const char* _argv)
                         break;
                     case ')':
                         if(value[0]==')'){
-                            addToken(Block);
+                            addToken(FUNC_ARGUMENT_END);
                         }
                         else{
                             rollback();
@@ -418,7 +445,12 @@ void spilt(const char* _argv)
                         }
                         else if(value[0]<='9'&&value[0]>='0'){
                             rollback();
-                            addToken(Num);
+                            if (is_float == 'y')
+                            {
+                                addToken(FLOAT);
+                            }
+                            else
+                                addToken(INT);
                             nextchar();
                             addToken(OPERATOR);
                         }
@@ -484,7 +516,7 @@ void spilt(const char* _argv)
                         
                     case ',':
                         rollback();
-                        addToken(Argument_content);
+                        addToken(RAW_TEXT);                //not sure,test,then
                         nextchar();
                         addToken(COMMA);
                         s = BeginState;
@@ -667,7 +699,7 @@ void spilt(const char* _argv)
                         break;
                     case ')':
                         if(value[0]==')'){
-                            addToken(Block);
+                            addToken(FUNC_ARGUMENT_END);
                             s = BeginState;
                         }
                         else{
@@ -717,7 +749,7 @@ void spilt(const char* _argv)
                 switch(c){
                     case ')':
                         rollback();
-                        addToken(Argument_content);
+                        addToken(RAW_TEXT);                     //not sure,for test
                         nextchar();
                         addToken(FUNC_ARGUMENT_END);
                         nextchar();
