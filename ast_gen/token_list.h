@@ -16,15 +16,15 @@ struct token_list_elem
         SEPARATOR,
         COMMA,
         VAR_DEFINE,
-        VAR_ASSIGN,
+        ASSIGN,
         INT,
         FLOAT,
         COLOR,
         STRING,
         OPERATOR,
         PROPERTY_NAME,
-        PROPERTY_ASSIGN,
         FUNC_NAME,
+        COMMENT,
         FUNC_ARGUMENT_BEGIN,
         FUNC_ARGUMENT_END
     } type;
