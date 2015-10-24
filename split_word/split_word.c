@@ -93,6 +93,27 @@ void addToken(enum Category type)
         p = value;
         printf("%s %d %d 0\n", p, raw, len);
     }
+    if (type == COLOR)
+    {
+        *p = '\0';
+        //printf("!!!!color length is :%d\n",strlen(value) );
+        if (strlen(value) == 4)
+        {
+            *p++ = value[2];
+            *p++ = value[3];
+            *p++ = value[3];
+            *p = '\0';
+            value[3] = value[2];
+            value[2] = value[1];
+            p = value;
+            printf("%s %d %d 0\n", p, type, len);
+        }
+        else{
+            p =value;
+            printf("%s %d %d 0\n", p, type, len);
+        }
+        
+    }
     else{
        *p = '\0';
         p = value;
