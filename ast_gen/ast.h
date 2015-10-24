@@ -90,7 +90,7 @@ struct ast_node
         NAME,      //No value, has RAW_TEXT and VAR_CALL in step one and only RAW_TEXT in step two
         CONTENT, //No value, has all other TYPE
         /*TEMP TYPE USED IN STEP ONE*/
-        FUNC_DEFINE;
+        FUNC_DEFINE,
         FUNC_CALL, //No value
         FUNC_ARGUMENT, //No value
         VAR_CALL,

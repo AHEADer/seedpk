@@ -265,7 +265,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 _var *new_name = new _var(_var::FUNC);
                 new_name->next = current_node->name_list->next;
                 current_node->name_list->next = new_name;
-                new_name->func = new ast_node(ast_node::TYPE::FUNC_DEFINE, nullptr, nullptr, new_name);
+                new_name->func = new ast_node(ast_node::TYPE::FUNC_DEFINE, nullptr, nullptr, new_name_list);
 
                 parsing = parsing->next;
                 ast_node *name_node = make_name(nullptr, new_name->func);
@@ -273,17 +273,23 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 if (parsing->type != token_list_elem::FUNC_ARGUMENT_BEGIN)
                     return -7;
                 parsing = parsing->next;
-                ast_node *func_name = nullptr;
+                ast_node *arg = name_node;
                 while (parsing->type == token_list_elem::VAR_DEFINE)
                 {
-                    func_name = make_node(func_name, new_name->func, ast_node::TYPE::FUNC_ARGUMENT);
-                    ast_node *arg_name = make_name(nullptr, func_name);
+                    arg = new ast_node(ast_node::TYPE::FUNC_ARGUMENT, arg, new_name->func, arg->name_list);
+
+                    parsing = parsing->next;
+                    ast_node *arg_name = new ast_node(ast_node::TYPE::RAW_TEXT, nullptr, arg, arg->name_list);
+                    arg_name->value = parsing->content;
+
+                    parsing = parsing->next;
                     if (parsing->type == token_list_elem::ASSIGN)
                     {
-                        ast_node *v_default = new ast_node(ast_node::TYPE::OPERATION, nullptr, arg_name, arg_name->name_list);
+                        ast_node *v_default = new ast_node(ast_node::TYPE::OPERATION, arg_name, arg, arg->name_list);
                         v_default->op = make_operation();
-                        arg_name->next_node = v_default;
                     }
+                    if (parsing->type == token_list_elem::COMMA)
+                        parsing = parsing->next;
                 }
                 if (parsing->type != token_list_elem::FUNC_ARGUMENT_END)
                     return -8;
@@ -291,7 +297,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 if (parsing->type != token_list_elem::BLOCK_BEGIN)
                     return -9;
                 parsing = parsing->next;
-                ast_node *new_content = new ast_node(ast_node::TYPE::CONTENT, nullptr, func_name);
+                ast_node *new_content = new ast_node(ast_node::TYPE::CONTENT, arg, new_name->func, current_node->name_list);
                 int flag = sub_block_parser(new_content);
                 if (!flag)
                     return flag;
@@ -300,9 +306,38 @@ int ast_gen::sub_block_parser(ast_node *content_node)
             }
             else
             {
-
+                ast_node *func_call = make_node(current_node, content_node, ast_node::TYPE::FUNC_CALL);
+                ast_node *call_name = make_name(nullptr, func_call);
+                if (parsing->type == token_list_elem::FUNC_ARGUMENT_BEGIN)
+                {
+                    parsing = parsing->next;
+                    ast_node *arg_node = call_name;
+                    while (parsing->type != token_list_elem::FUNC_ARGUMENT_END)
+                    {
+                        arg_node = new ast_node(ast_node::TYPE::FUNC_ARGUMENT, arg_node, func_call, current_node->name_list);
+                        if (parsing->type == token_list_elem::RAW_TEXT)
+                        {
+                            ast_node *v_text = new ast_node(ast_node::TYPE::RAW_TEXT, nullptr, arg_node, current_node->name_list);
+                            v_text->value = parsing->content;
+                            arg_node->child_node = v_text;
+                        }
+                        else
+                        {
+                            ast_node *op = new ast_node(ast_node::TYPE::OPERATION, nullptr, arg_node, current_node->name_list);
+                            op->op = make_operation();
+                            arg_node->child_node = op;
+                        }
+                        if (parsing->type == token_list_elem::COMMA)
+                            parsing = parsing->next;
+                    }
+                    break;
+                }
+                parsing = parsing->next;
+                current_node = func_call;
             }
         }
+        default:
+            parsing = parsing->next;
         }
     }
     return 0;
