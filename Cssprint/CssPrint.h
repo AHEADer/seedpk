@@ -4,7 +4,6 @@
  *  time : 2015-10-21
  * */
 
-int CssPrint_main(ast_node *root, const char *filename);
 
 typedef struct ast_node
 {
@@ -33,4 +32,4 @@ typedef struct ast_node
     struct ast_node *parent_node;
 } ast_node;
 
-
+int CssPrint_main(ast_node *root, const char *filename);

@@ -31,13 +31,6 @@ struct token_list_elem
     char *content;
     struct token_list_elem *next;
 
-    token_list_elem(TYPE t, const char *s):
-        type(t),
-        content((char *)malloc(strlen(content))),
-        next(nullptr)
-        {
-            strcpy(content, s);
-        }
 };
 
 struct token_list

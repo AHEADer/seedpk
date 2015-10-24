@@ -3,6 +3,16 @@
 
 #include "token_list.h"
 
+struct str_ref
+{
+    char *str;
+    str_ref *next;
+    ~str_ref()
+    {
+        delete str;
+    }
+};
+
 struct _var_call
 {
     int undef_times;
@@ -20,7 +30,8 @@ struct _operation
         STRING,
         OPERATOR,
     } type;
-    union {
+    union
+    {
         int i_val;
         float f_val;
         _var_call *var;
@@ -48,24 +59,21 @@ struct _var
     char *name;
     union
     {
-        int v_int;
-        float v_float;
         char * v_string;
         char *v_text;
-        ast_node *func;
 
     };
     union
     {
         _operation *op_list;
         char *string_with_var;
-        ast_node *name_node;
+        ast_node *func;
     };
     struct _var *next;
     _var(TYPE t):
         type(t),
         name(nullptr),
-        v_int(0),
+        v_string(nullptr),
         op_list(nullptr),
         next(nullptr)
     {
@@ -76,6 +84,17 @@ struct _var
         if (type != STRING)
             delete op_list;
     }
+};
+
+struct _ret_with_type
+{
+    char *s_result;
+    union
+    {
+        int i_result;
+        float f_result;
+    };
+    _var::TYPE t;
 };
 
 struct ast_node
@@ -136,6 +155,9 @@ private:
         MIXIN
     } state;
 
+    str_ref *str_list;
+    ast_node *func_node;
+
     ast_node *make_node(ast_node *current_node, ast_node *content_node, ast_node::TYPE t);
     ast_node *make_name(ast_node *current_node, ast_node *parent_node);
     _operation *make_operation();
@@ -147,11 +169,34 @@ public:
         root_node(new ast_node(ast_node::TYPE::ROOT, nullptr, nullptr, new _var(_var::NEW_FLAG))),
         tokens(tokenlist),
         parsing(tokens.head),
-        state(STATE_NORMAL)
+        state(STATE_NORMAL),
+        str_list(nullptr),
+        func_node(nullptr)
     {
 
     }
+
+    ~ast_gen()
+    {
+        if (str_list)
+        {
+            str_ref *t1, *t2;
+            for (t1 = str_list, t2 = str_list->next; t2; t1 = t2, t2 = t2->next)
+            {
+                delete t1;
+            }
+            delete t1;
+        }
+    }
+
     int first_step();
+    _ret_with_type var_call_in(char *var_name, int times, _var *var_list);
+    _ret_with_type cal_var(char *var_name, _var *var_list);
+    _ret_with_type cal_op_string(_operation *op_list, _var *var_list);
+    int var_extend(ast_node *node);
+    int func_extend();
+    int expr_extend(ast_node *node);
+    int func_call_extend(ast_node *node);
     int second_step();
     const ast_node *get_ast()
     {
