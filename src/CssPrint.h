@@ -7,12 +7,13 @@
 #include <string.h>
 #include <errno.h>
 
-/*String Concatenation*/
 #include <stdarg.h>
+/*String Concatenation*/
 #define sstrjoin(...)    _sstrjoin(__VA_ARGS__, NULL)
 char *_sstrjoin(char *buf, char *delim, ...)
 {
     char *p, *res, *d;
+    int i = 0;
     va_list ap;
     va_start(ap, delim);
     res = buf;
@@ -20,11 +21,13 @@ char *_sstrjoin(char *buf, char *delim, ...)
     while(p)
     {
         while(*res++ = *p++)
+            ;
         res--;
         if(p = va_arg(ap, char *))
         {
             d = delim;
             while(*res++ = *d++)
+                ;
             res--;
         }
     }
