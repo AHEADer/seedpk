@@ -6,46 +6,47 @@
  *Class选择器:.定义
  *
  */
-
+//TODO
+//#111
 int line = 0, column = 0;
+char is_float = 'n';
 char value[64];
 char c , *p = value;
 
 enum Category {
     Sentence,
-    ID_selector,
+    ID_selector,//1
     Class_selector,
     Symbol,
     Block,
-    Variable,
+    Variable,//5
     Value,
     Space,
     Element,
     Key,
-    Num,
+    Num,//10
     DelAll,
     Argument_name,
     Argument_content,
-    RAW_TEXT,
-    SELECTTOR_NAME,
+
+    RAW_TEXT, //14
+    SELECTOR_NAME,
     BLOCK_BEGIN,
     BLOCK_END,
     SEPARATOR,
-    VAR_DEFINE,
-    VAR_NAME,
-    VAR_ASSIGN,
+    COMMA,
+    VAR_DEFINE,//20
+    ASSIGN,
     INT,
     FLOAT,
     COLOR,
-    STRING,
-    OPERATOR,
+    STRING,//25
+    OPERATOR,//()while calculate
     PROPERTY_NAME,
-    PROPERTY_ASSIGN,
-    MAX_IN,
     FUNC_NAME,
     FUNC_ARGUMENT_BEGIN,
-    FUNC_ARGUMENT_END
-
+    FUNC_ARGUMENT_END,
+    COMMENT,
 };
 
 enum State {
@@ -61,6 +62,7 @@ enum State {
     NumState,
     ColorState,
     ArgumentState,
+    FuncState,
 };
 
 void nextchar()
@@ -82,6 +84,35 @@ void addToken(enum Category type)
     if(type == Space){
         p--;
         return;
+    }
+    if (type == FUNC_NAME)
+    {
+        printf("%s %d %d 0\n"," ", type, len);
+        enum Category raw = RAW_TEXT;
+        *p = '\0';
+        p = value;
+        printf("%s %d %d 0\n", p, raw, len);
+    }
+    if (type == COLOR)
+    {
+        *p = '\0';
+        //printf("!!!!color length is :%d\n",strlen(value) );
+        if (strlen(value) == 4)
+        {
+            *p++ = value[2];
+            *p++ = value[3];
+            *p++ = value[3];
+            *p = '\0';
+            value[3] = value[2];
+            value[2] = value[1];
+            p = value;
+            printf("%s %d %d 0\n", p, type, len);
+        }
+        else{
+            p =value;
+            printf("%s %d %d 0\n", p, type, len);
+        }
+        
     }
     else{
        *p = '\0';
@@ -146,6 +177,7 @@ void spilt(const char* _argv)
                         break;
                     case '@':
                         s = VariableState;
+                        addToken(VAR_DEFINE);
                         nextchar();
                         break;
                     case '#':
@@ -157,16 +189,16 @@ void spilt(const char* _argv)
                         s = ClassState;
                         break;
                     case '{':
-                        addToken(Block);
+                        addToken(BLOCK_BEGIN);
                         //s = ElementState;
                         break;
                     case '}':
-                        addToken(Block);
+                        addToken(BLOCK_END);
                         //nextchar();
                         //s = BeginState;
                         break;
                     case '\n': case '\r':
-                        addToken(Space);
+                        addToken(DelAll);
                         //nextchar();
                         //s = BeginState;
                         break;
@@ -199,21 +231,22 @@ void spilt(const char* _argv)
                         break;
                     case ':':
                         rollback();
-                        addToken(Element);
+                        addToken(PROPERTY_NAME);
                         nextchar();
-                        addToken(Block);
+                        addToken(ASSIGN);
                         nextchar();
                         s = ValueState;
                         break;
                     case '(':
                         if(value[0]=='('){
-                            addToken(Block);
+                            addToken(OPERATOR);
                         }
                         else{
                             rollback();
                             addToken(FUNC_NAME);
                             nextchar();
-                            addToken(Block);
+                            addToken(FUNC_ARGUMENT_BEGIN);
+                            s = ArgumentState;
                         }
                         break;
                     case ')':
@@ -222,18 +255,19 @@ void spilt(const char* _argv)
                         }
                         else{
                             rollback();
-                            addToken(Value);
+                            addToken(RAW_TEXT);
                             nextchar();
-                            addToken(Block);
+                            addToken(OPERATOR);
                             switch(c){
                             case ';':
-                                addToken(Block);
+                                addToken(SEPARATOR);
                                 break;
                             default:
                                 break;
                         }
                         }
                         break;
+                        /*
                     case '=':
                         rollback();
                         addToken(Argument_name);
@@ -242,10 +276,10 @@ void spilt(const char* _argv)
                         nextchar();
                         s = ArgumentState;
                         break;
+                        */
                     case ';':
-                        addToken(Block);
+                        addToken(SEPARATOR);
                         break;
-
                     default:
                         //nextchar();
                         //addToken(Space);
@@ -259,7 +293,7 @@ void spilt(const char* _argv)
                         nextchar();
                         switch(c){
                             case '/':
-                                addToken(Sentence);
+                                addToken(COMMENT);
                                 s = BeginState;
                                 break;
                             default:
@@ -279,9 +313,9 @@ void spilt(const char* _argv)
                 switch(c){
                     case ':':
                         rollback();
-                        addToken(Variable);
+                        addToken(RAW_TEXT);
                         nextchar();
-                        addToken(Block);
+                        addToken(ASSIGN);
                         nextchar();
                         s = ValueState;
                         break;
@@ -289,9 +323,78 @@ void spilt(const char* _argv)
                         addToken(Space);
                         nextchar();
                         break;
+                    case '@':
+                        addToken(VAR_DEFINE);
+                        nextchar();
+                        break;
+                    case '{':
+                        addToken(BLOCK_BEGIN);
+                        nextchar();
+                        break;
+                    case '}':
+                        rollback();
+                        addToken(RAW_TEXT);
+                        nextchar();
+                        addToken(BLOCK_END);
+                        nextchar();
+                        s = BeginState;
+                    case ';':
+                        rollback();
+                        addToken(RAW_TEXT);
+                        nextchar();
+                        addToken(SEPARATOR);
+                        s = BeginState;
+                        break;
+                    //test!!!!!!!!!!
+                    case '+':case '*':
+                        if (value[0]=='+'||value[0]=='*')
+                        {
+                            addToken(OPERATOR);
+                        }
+                        else if(value[0]<='9'&&value[0]>='0'){
+                            rollback();
+                            if (is_float == 'y')
+                            {
+                                is_float = 'n';
+                                addToken(FLOAT);
+                            }
+                            else
+                                addToken(INT);
+                            nextchar();
+                            addToken(OPERATOR);
+                        }
+                        else{
+                            rollback();
+                            addToken(RAW_TEXT);
+                            nextchar();
+                            addToken(OPERATOR);
+                        }
+                        nextchar();
+                        break;
+                    //test!!!!!!!!!!!!!
+                    case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                        s = NumState;
+                        break;
+                    case ')':
+                        if(value[0]==')'){
+                            addToken(RAW_TEXT);
+                            s = BeginState;
+                        }
+                        else{
+                            if (is_float == 'e')
+                            {
+                                rollback();
+                                addToken(RAW_TEXT);
+                                nextchar();
+                                addToken(RAW_TEXT);
+                                s = BeginState;
+                            }
+                            else
+                                nextchar();
+                        }
+                        break;
                     default:
                         nextchar();
-                        s = VariableState;
                 }
                 break;
             case ValueState:
@@ -299,13 +402,13 @@ void spilt(const char* _argv)
                     case ' ':
                         addToken(Space);
                         nextchar();
-                        s = ValueState;
+                        //s = ValueState;
                         break;
                     case ';':
                         rollback();
-                        addToken(Value);
+                        addToken(RAW_TEXT);
                         nextchar();
-                        addToken(Block);
+                        addToken(SEPARATOR);
                         s = BeginState;
                         break;
                     case '+':case '*':
@@ -321,7 +424,7 @@ void spilt(const char* _argv)
                         }
                         else{
                             rollback();
-                            addToken(Value);
+                            addToken(RAW_TEXT);
                             nextchar();
                             addToken(OPERATOR);
                         }
@@ -340,14 +443,20 @@ void spilt(const char* _argv)
                             }
                             break;
                     case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
-                        s = NumState;
+                        if (value[0]>='0'&&value[0]<='9')
+                        {
+                            s = NumState;
+                        }
+                        else
+                            nextchar();
                         break;
                     case '#':
                         s = ColorState;
                         break;
+                    /*
                     case '(':
                         if(value[0]=='('){
-                            addToken(Block);
+                            addToken(OPERATOR);
                             s = BeginState;
                         }
                         else{
@@ -358,32 +467,42 @@ void spilt(const char* _argv)
                             s = BeginState;
                         }
                         break;
+                        */
                     case ')':
                         if(value[0]==')'){
-                            addToken(Block);
+                            addToken(RAW_TEXT);
                             s = BeginState;
                         }
                         else{
                             rollback();
-                            addToken(Value);
+                            addToken(RAW_TEXT);
                             nextchar();
-                            addToken(Block);
-                            switch(c){
-                            case ';':
-                                addToken(Block);
-                                break;
-                            default:
-                                break;
-                        }
+                            addToken(RAW_TEXT);
                             s = BeginState;
                         }
                         break;
+                        
                     case ',':
                         rollback();
                         addToken(Argument_content);
                         nextchar();
-                        addToken(Block);
+                        addToken(COMMA);
                         s = BeginState;
+                        break;
+                    case '@':
+                        s = VariableState;
+                        is_float = 'e';
+                        rollback();
+                        if (p != value)
+                        {
+                            addToken(RAW_TEXT);
+                            nextchar();
+                        }
+                        else{
+                            nextchar();
+                        }
+                        addToken(VAR_DEFINE);
+                        nextchar();
                         break;
                     default:
                         nextchar();
@@ -393,22 +512,49 @@ void spilt(const char* _argv)
             case ClassState:
                 switch(c){
                     case ' ':
-                        rollback();
-                        addToken(Class_selector);
-                        nextchar();
-                        addToken(Space);
-                        s = BeginState;
+                        while(c == ' ')
+                        {
+                            nextchar();
+                        }
+                        switch(c){
+                            case '{':
+                                rollback();
+                                p--;
+                                while(*p == ' '){
+                                    p--;
+                                }
+                                p++;
+                                addToken(SELECTOR_NAME);
+                                nextchar();
+                                addToken(BLOCK_BEGIN);
+                                s = BeginState;
+                                break;
+                            case '(':
+                                rollback();
+                                p--;
+                                while(*p == ' '){
+                                    p--;
+                                }
+                                p++;
+                                addToken(FUNC_NAME);
+                                nextchar();
+                                addToken(FUNC_ARGUMENT_BEGIN);
+                                s = BeginState;
+                                break;
+                            default:
+                                nextchar();
+                        }
                         break;
                     case '{':
                         rollback();
-                        addToken(Class_selector);
+                        addToken(SELECTOR_NAME);
                         s = BeginState;
                         break;
                     case ';':
                         rollback();
-                        addToken(Class_selector);
+                        addToken(SELECTOR_NAME);
                         nextchar();
-                        addToken(Block);
+                        addToken(SEPARATOR);
                         s = BeginState;
                         break;
                     case '(':
@@ -423,14 +569,14 @@ void spilt(const char* _argv)
                 switch(c){
                     case ' ':
                         rollback();
-                        addToken(ID_selector);
+                        addToken(SELECTOR_NAME);
                         nextchar();
                         addToken(Space);
                         s = BeginState;
                         break;
                     case '{':
                         rollback();
-                        addToken(ID_selector);
+                        addToken(SELECTOR_NAME);
                         s = BeginState;
                         break;
                     default:
@@ -453,7 +599,7 @@ void spilt(const char* _argv)
                     case ' ':
                         rollback();
                         if(c!=' '&&c!='{'){
-                            addToken(Element);
+                            addToken(PROPERTY_NAME);
                             nextchar();
                             s = KeyState;
                         }
@@ -465,7 +611,7 @@ void spilt(const char* _argv)
                     case ':':
                         rollback();
                         if(c!=' ')
-                            addToken(Element);
+                        addToken(PROPERTY_NAME);
                         nextchar();
                         nextchar();
                         s = KeyState;
@@ -476,7 +622,7 @@ void spilt(const char* _argv)
                                 addToken(Space);
                             nextchar();
                             nextchar();
-                            s = ElementState;
+                            //s = ElementState;
                 }
                 break;
 
@@ -487,24 +633,37 @@ void spilt(const char* _argv)
                 switch(c){
                     case ' ':
                         rollback();
-                        addToken(Num);
+                        addToken(INT);
                         nextchar();
                         addToken(Space);
                         s = ValueState;
                         break;
                     case ';':
                         rollback();
-                        addToken(Num);
+                        if (is_float == 'y')
+                        {
+                            addToken(FLOAT);
+                            is_float = 'n';
+                        }
+                        else
+                            addToken(INT);
                         nextchar();
-                        addToken(Block);
+                        addToken(SEPARATOR);
                         s = BeginState;
                         break;
                     case ',':
                         rollback();
-                        addToken(Argument_content);
+                        if (is_float == 'y')
+                        {
+                            addToken(FLOAT);
+                            is_float = 'n';
+                        }
+                        else
+                            addToken(INT);
                         nextchar();
-                        addToken(Block);
-                        s = BeginState;
+                        addToken(COMMA);
+                        nextchar();
+                        s = ArgumentState;
                         break;
                     case ')':
                         if(value[0]==')'){
@@ -513,14 +672,28 @@ void spilt(const char* _argv)
                         }
                         else{
                             rollback();
-                            addToken(Value);
+                            if (is_float == 'y')
+                            {
+                                addToken(FLOAT);
+                                is_float = 'n';
+                            }
+                            else
+                                addToken(INT);
                             nextchar();
-                            addToken(Block);
+                            addToken(FUNC_ARGUMENT_END);
                             s = BeginState;
                         }
                         break;
-                    default:
+                    case '.':
+                        is_float = 'y';
                         nextchar();
+                        break;
+                    case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                        nextchar();
+                        break;
+                    default:
+                        nextchar(); 
+                        s = ValueState;
                 }
                 break;
             case ColorState:
@@ -529,7 +702,7 @@ void spilt(const char* _argv)
                         rollback();
                         addToken(COLOR);
                         nextchar();
-                        addToken(Block);
+                        addToken(SEPARATOR);
                         s = BeginState;
                         break;
                     case ' ':
@@ -546,11 +719,11 @@ void spilt(const char* _argv)
                         rollback();
                         addToken(Argument_content);
                         nextchar();
-                        addToken(Block);
+                        addToken(FUNC_ARGUMENT_END);
                         nextchar();
                         switch(c){
                             case ';':
-                                addToken(Block);
+                                addToken(SEPARATOR);
                                 break;
                             default:
                                 break;
@@ -559,13 +732,45 @@ void spilt(const char* _argv)
                         break;
                     case ',':
                         rollback();
-                        addToken(Argument_content);
-                        s = BeginState;
+                        if (is_float == 'y')
+                        {
+                            addToken(FLOAT);
+                            is_float = 'n';
+                        }
+                        else
+                            addToken(INT);
+                        nextchar();
+                        addToken(COMMA);
+                        nextchar();
+                        break;
+                    case '@':
+                        addToken(VAR_DEFINE);
+                        nextchar();
+                        break;
+                    case ' ':
+                        addToken(Space);
+                        nextchar();
+                        break;
+                    case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                        s = NumState;
+                        break;
+                    case ':':
+                        rollback();
+                        addToken(RAW_TEXT);
+                        nextchar();
+                        addToken(ASSIGN);
+                        nextchar();
+                        s = ValueState;
                         break;
                     default:
                         nextchar();
                 }
                 break;
+            case FuncState:
+                switch(c){
+
+                }
+
             default:
                 nextchar();
         }
