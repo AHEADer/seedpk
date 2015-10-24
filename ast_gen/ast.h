@@ -18,7 +18,7 @@ struct _operation
         COLOR,
         VAR_CALL,
         STRING,
-        OPERATOR
+        OPERATOR,
     } type;
     union {
         int i_val;
@@ -42,6 +42,7 @@ struct _var
         COLOR,
         STRING,
         FUNC,
+        RAW_TEXT,
         UNDECIDED //use before calculate
     } type;
     char *name;
@@ -50,6 +51,7 @@ struct _var
         int v_int;
         float v_float;
         char * v_string;
+        char *v_text;
         ast_node *func;
 
     };
@@ -57,6 +59,7 @@ struct _var
     {
         _operation *op_list;
         char *string_with_var;
+        ast_node *name_node;
     };
     struct _var *next;
     _var(TYPE t):
@@ -84,7 +87,7 @@ struct ast_node
         COMMENT,   //No value, has RAW_TEXT
         SELECTOR,  //No value, has NAME and CONTENT
         PROPERTY,  //No value, has NAME and VALUE
-        NAME,      //No value, has RAW_TEXT and VAR_CALL in step one and only VALUE in step two
+        NAME,      //No value, has RAW_TEXT and VAR_CALL in step one and only RAW_TEXT in step two
         CONTENT, //No value, has all other TYPE
         /*TEMP TYPE USED IN STEP ONE*/
         RESERVERED,
@@ -136,7 +139,7 @@ private:
     } state;
 
     ast_node *make_node(ast_node *current_node, ast_node *content_node, ast_node::TYPE t);
-    ast_node *make_name();
+    ast_node *make_name(ast_node *current_node, ast_node *parent_node);
     _operation *make_operation();
     _var_call *make_var_call();
     int sub_block_parser(ast_node *content_node);

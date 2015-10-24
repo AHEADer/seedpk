@@ -18,9 +18,9 @@ ast_node *ast_gen::make_node(ast_node *current_node, ast_node *content_node, ast
     return new_node;
 }
 
-ast_node *ast_gen::make_name()
+ast_node *ast_gen::make_name(ast_node *current_node, ast_node *parent_node)
 {
-    ast_node *name_node = new ast_node(ast_node::TYPE::NAME, nullptr, parent_node, parent_node->name_list);
+    ast_node *name_node = make_node(current_node, parent_node, ast_node::TYPE::NAME);
     ast_node *value_node = nullptr;
     while (parsing->type == token_list_elem::RAW_TEXT || parsing->type == token_list_elem::VAR_DEFINE)
     {
@@ -85,7 +85,7 @@ _operation *ast_gen::make_operation()
     parsing = parsing->next;
     while (true)
     {
-        _operation *new_current;
+        _operation *new_current=new _operation();
         switch (parsing->type)
         {
         case token_list_elem::INT:
@@ -163,7 +163,29 @@ int ast_gen::sub_block_parser(ast_node *content_node)
         {
             ast_node *new_node = make_node(current_node, content_node, ast_node::TYPE::SELECTOR);
             parsing = parsing->next;
-            ast_node *name_node = make_name();
+            ast_node *name_node = nullptr;
+            while (parsing->type != token_list_elem::BLOCK_BEGIN)
+            {
+                if (parsing->type == token_list_elem::SELECTOR_NAME)
+                {
+                    name_node = make_name(name_node, new_node);
+                    name_node = make_node(name_node, new_node, ast_node::TYPE::NAME);
+                    ast_node *value_node = new ast_node(ast_node::TYPE::RAW_TEXT, nullptr, name_node, new_node->name_list);
+                    name_node->value = parsing->content; // make_name
+                }
+            }
+            _var *new_name_list = new _var(_var::NEW_FLAG);
+            new_name_list->next = current_node->name_list;
+            ast_node *new_content = new ast_node(ast_node::TYPE::CONTENT, name_node, new_node, new_name_list);
+            name_node->next_node = new_content;
+            int ret = sub_block_parser(new_content);
+            if (!ret)
+                return ret;
+            _var *new_name = new _var(_var::FUNC);
+            new_name->func = new_node;
+            new_name->next = current_node->name_list->next;
+            current_node->name_list->next = new_name;
+            current_node = new_node;
             parsing = parsing->next;
             break;
         }
@@ -183,7 +205,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
             new_name->next = current_node->name_list->next;
             current_node->name_list->next = new_name;
             parsing = parsing->next;
-            if (parsing->type != token_list_elem::VAR_ASSIGN)
+            if (parsing->type != token_list_elem::ASSIGN)
                 return -4;
             parsing = parsing->next;
             if (parsing->type == token_list_elem::STRING)
