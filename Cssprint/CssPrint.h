@@ -1,35 +1,113 @@
-/*
- *  author : lkx810
- *  mail : lkx810@gmail.com
- *  time : 2015-10-21
- * */
+
+#include "PublicStruct.h"
 
 
-typedef struct ast_node
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+
+/*String Concatenation*/
+#include <stdarg.h>
+#define sstrjoin(...)    _sstrjoin(__VA_ARGS__, NULL)
+char *_sstrjoin(char *buf, char *delim, ...)
 {
-    enum TYPE
+    char *p, *res, *d;
+    va_list ap;
+    va_start(ap, delim);
+    res = buf;
+    p = va_arg(ap, char *);
+    while(p)
     {
-        ROOT, //No value, has CONTENT
-        RAW_TEXT,
-        COMMENT,
-        SELECTOR,  //No value, has NAME and CONTENT
-        PROPERTY,  //No value, has NAME and VALUE
-        NAME,      //No value, has RAW_TEXT and OPERATION in step one and only VALUE in step two
-        CONTENT, //No value, has all other TYPE
-        /*TEMP TYPE USED IN STEP ONE*/
-        RESERVERED,
-        FUNC_DEFINE, //No value
-        FUNC_CALL, //No value
-        FUNC_ARGUMENT, //No value
-        VAR_DEFINE, //No value
-        STRING,
-        OPERATION,
-    } type;
-    char *value;
-    struct ast_node *next_node;
-    struct ast_node *child_node;
-    struct ast_node *previous_node;
-    struct ast_node *parent_node;
-} ast_node;
+        while(*res++ = *p++)
+        res--;
+        if(p = va_arg(ap, char *))
+        {
+            d = delim;
+            while(*res++ = *d++)
+            res--;
+        }
+    }
+    *res = '\0';
+    va_end(ap);
+    return buf;
+}
 
-int CssPrint_main(ast_node *root, const char *filename);
+
+/*Define a stack to store child selector*/
+typedef struct NODE
+{   ast_node *data;
+    struct NODE *next;
+}stack, *LinkStack;
+
+LinkStack Init_LinkStack(){
+     return NULL;
+}
+
+LinkStack PushS(LinkStack top, ast_node *x)
+{
+    LinkStack s;
+    s=(LinkStack)malloc(sizeof(stack));
+    s->data=x;
+    s->next=top;
+    top=s;
+    printf("PushS - INFO : type %d\n", x->type);
+    return top;
+}
+
+LinkStack PopS(LinkStack top, ast_node **x)
+{
+    LinkStack p;
+    if(top ==NULL)return NULL;
+    else
+    {
+        *x=top->data;
+        p=top;
+        top=top->next;
+        free(p);
+       printf("PopS - INFO : type %d\n", (*x)->type);
+        return top;
+    }
+}
+
+/*File Related Functions*/
+void msg_printf(const char *msg, int lever)
+{
+    if (lever == 0)
+        fprintf(stdout, "INFO : %s \n", msg);
+    if (lever == -1)
+        fprintf(stderr, "ERROR: %s \n", msg);
+}
+
+void write_file(FILE *input, const char *content)
+{
+    printf("PRINT:  %s\n",content);
+    fprintf(input,"%s",content);
+}
+
+FILE *open_file(const char *filename, const char *opt)
+{
+    FILE *input;
+    if (!filename)
+         input = stdout;
+    else
+    {
+        input = fopen(filename, opt);
+        if (!input) {
+            fprintf(stderr, "error: cannot open %s: %s", filename, strerror(errno));
+            return NULL;
+        }
+
+    }
+    return input;
+}
+
+void *close_file(const char *filename, FILE *file)
+{
+    if(file != stdout)
+        fclose(file);
+}
+
+
+
+
