@@ -173,6 +173,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                     ast_node *value_node = new ast_node(ast_node::TYPE::RAW_TEXT, nullptr, name_node, new_node->name_list);
                     name_node->value = parsing->content; // make_name
                 }
+                parsing = parsing->next;
             }
             _var *new_name_list = new _var(_var::NEW_FLAG);
             new_name_list->next = current_node->name_list;
@@ -238,6 +239,22 @@ int ast_gen::sub_block_parser(ast_node *content_node)
             break;
 
         }
+        case token_list_elem::PROPERTY_NAME:
+        {
+            ast_node *new_node = make_node(current_node, content_node, ast_node::TYPE::PROPERTY);
+            parsing = parsing->next;
+            ast_node *name_node = make_name(nullptr, new_node);
+            if (parsing->type != token_list_elem::ASSIGN)
+                return -4;
+            ast_node *value_node = new ast_node(ast_node::TYPE::OPERATION, name_node, new_node, current_node->name_list);
+            value_node->op = make_operation();
+            current_node = new_node;
+            break;
+        }
+        case token_list_elem::FUNC_NAME:
+            {
+
+            }
         }
     }
     return 0;
