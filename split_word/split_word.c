@@ -26,6 +26,7 @@ enum Category {
     DelAll,
     Argument_name,
     Argument_content,
+
     RAW_TEXT,
     SELECTTOR_NAME,
     BLOCK_BEGIN,
@@ -157,11 +158,11 @@ void spilt(const char* _argv)
                         s = ClassState;
                         break;
                     case '{':
-                        addToken(Block);
+                        addToken(BLOCK_BEGIN);
                         //s = ElementState;
                         break;
                     case '}':
-                        addToken(Block);
+                        addToken(BLOCK_END);
                         //nextchar();
                         //s = BeginState;
                         break;
@@ -393,11 +394,26 @@ void spilt(const char* _argv)
             case ClassState:
                 switch(c){
                     case ' ':
-                        rollback();
-                        addToken(Class_selector);
-                        nextchar();
-                        addToken(Space);
-                        s = BeginState;
+                        while(c == ' ')
+                        {
+                            nextchar();
+                        }
+                        switch(c){
+                            case '{':
+                                rollback();
+                                p--;
+                                while(*p == ' '){
+                                    p--;
+                                }
+                                p++;
+                                addToken(SELECTTOR_NAME);
+                                nextchar();
+                                addToken(BLOCK_BEGIN);
+                                s = BeginState;
+                                break;
+                            default:
+                                nextchar();
+                        }
                         break;
                     case '{':
                         rollback();
