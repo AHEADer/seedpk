@@ -58,6 +58,7 @@ enum State {
     ColorState,
     ArgumentState,
     FuncState,
+    StringState,
 };
 
 void Store_in_list(enum Category type, char* value)
@@ -81,7 +82,7 @@ void nextchar()
 
 void addToken(enum Category type)
 {
-    int len = strlen(p);
+    //int len = strlen(p);
     if (type == DelAll)
     {
         *p = '\0';
@@ -465,6 +466,11 @@ void spilt(const char* _argv)
                     case '#':
                         s = ColorState;
                         break;
+                    case '\"':
+                        s = StringState;
+                        addToken(Space);
+                        nextchar();
+                        break;
                     /*
                     case '(':
                         if(value[0]=='('){
@@ -781,6 +787,32 @@ void spilt(const char* _argv)
             case FuncState:
                 switch(c){
 
+                }
+            case StringState:
+                switch(c){
+                    case '\\':
+                        nextchar();
+                        if (c == '\"')
+                        {
+                            rollback();
+                            addToken(STRING);
+                            nextchar();
+                            addToken(DelAll);
+                            s = ValueState;
+                        }
+                        else{
+                            nextchar();
+                        }
+                        break;
+                    case '\"':
+                        rollback();
+                        addToken(STRING);
+                        nextchar();
+                        addToken(DelAll);
+                        s = ValueState;
+                        break;
+                    default:
+                        nextchar();
                 }
 
             default:
