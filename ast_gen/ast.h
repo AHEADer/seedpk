@@ -140,6 +140,7 @@ struct ast_node
         if (previous_node)
             previous_node->next_node = this;
     }
+    void cp(ast_node *src);
 };
 
 class ast_gen
@@ -189,9 +190,17 @@ public:
         }
     }
 
+    void find_merge(ast_node *node);
+
     int first_step();
+    int check_arg(ast_node *func, ast_node *call);
+    void add_new_name(_var *dst, _var *src);
+    void copy_child(ast_node *dst, ast_node *src, _var *var_list);
+    void extend_with_var_list(ast_node *node, _var *var_list, ast_node *func);
+    void end_block(ast_node *content_node);
     _ret_with_type var_call_in(char *var_name, int times, _var *var_list);
     _ret_with_type cal_var(char *var_name, _var *var_list);
+    char *cal_string_var(char *s, _var *var_list);
     _ret_with_type cal_op_string(_operation *op_list, _var *var_list);
     int var_extend(ast_node *node);
     int func_extend();
