@@ -1,7 +1,6 @@
 #include "CssPrint.h"
 
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +10,6 @@
 char *_sstrjoin(char *buf, char *delim, ...)
 {
     char *p, *res, *d;
-    int i = 0;
     va_list ap;
     va_start(ap, delim);
     res = buf;
@@ -43,7 +41,8 @@ void print_node(FILE *input, ast_node *node);
 void print_content(FILE *input, ast_node *node);
 
 
-int main(){return 0;}
+
+
 ////////////////////////////////////////////define a linkstact store 'Less Nest'(嵌套
 typedef struct NODE
 {   ast_node *data;
@@ -54,7 +53,6 @@ LinkStack Init_LinkStack(){
      return NULL;
 }
 
-
 LinkStack PushS(LinkStack top, ast_node *x)
 {
     LinkStack s;
@@ -64,7 +62,6 @@ LinkStack PushS(LinkStack top, ast_node *x)
     top=s;
     return top;
 }
-
 
 LinkStack PopS(LinkStack top, ast_node *x)
 {
@@ -80,29 +77,77 @@ LinkStack PopS(LinkStack top, ast_node *x)
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////////
 
 int CssPrint_main(ast_node *root, const char *filename)
 {
-    ast_node *node;
-    ast_node *nest;
-    ast_node *next;
-    node = root;
 
     FILE *css_file;
     css_file = open_file(filename, "w");
-
+    printf("hello");
     if (root->type == ROOT)
         print_node(css_file, root->child_node);
     else
         print_node(stdout, root);             //if ast_node dont start with 'root' or filename == null, will print cssfile to stdout
+}
 
+///////////////////////////////////////////////sorry to define two global variable
+int i, j, k;                                    //conter of ParentSelectorName
+char ParentSelectorName[128][128];               //store combination of parent Name
+char TempName[128][128];
+
+
+typedef struct _NameStack
+{   char *str;
+    struct _NameStack *next;
+    int num;
+}namestack, *NameStack;
+
+
+/*
+NameStack Init_NameStack(){
+    NameStack s;
+    s=(NameStack)malloc(sizeof(NameStack));
+    s->str = NULL;
+    s->next = NULL;
+    s.num = 0;
+    return s;
+}
+
+NameStack PushName(NameStack top, char *x)
+{
+    NameStack s;
+    s=(NameStack)malloc(sizeof(NameStack));
+    s->str=x;
+    s->next=top;
+    s.num += 1;
+    top=s;
+    return top;
+}
+
+NameStack PopName(NameStack top, char *x)
+{
+    LinkStack p;
+    if(top ==NULL)return NULL;
+    else
+    {
+        x=top->str;
+        p=top;
+        top=top->next;
+        s.num -= 1;
+        free(p);
+        return top;
+    }
 }
 
 
-///////////////////////////////////////////////sorry to define two global variable
-int i;                                       //conter of ParentSelectorName
-char* ParentSelectorName[128];               //store combination of parent Name
+
+NameStack namestack = Init_NameStack();
+LinkStack Init_LinkStack(){
+     return NULL;
+}*/
+
 
 void print_node(FILE *input, ast_node *node)
 {
@@ -116,7 +161,7 @@ void print_node(FILE *input, ast_node *node)
     Next = node->next_node;
     Child = node->child_node;
 
-    char buf[128];
+    char* buf;
     ast_node *tmp;
 
     LinkStack NestedStack = Init_LinkStack();
@@ -125,16 +170,6 @@ void print_node(FILE *input, ast_node *node)
 
     while(Node)
     {
-        if (NestedStack)
-        {
-            NestedStack = PopS(NestedStack, Nested);
-            for ( i = 0, tmp = Nested->child_node; tmp->type == NAME ; ++i, tmp = tmp->next_node)
-            {
-                ParentSelectorName[i] = tmp->child_node->value;
-            }
-            print_node(input, Nested->child_node);
-        }
-
         switch(Node->type)
         {
         case RAW_TEXT:
@@ -157,6 +192,7 @@ void print_node(FILE *input, ast_node *node)
         case NAME:      //  has RAW_TEXT
             if (Parent->type == SELECTOR)
             {
+                buf = (char *)malloc(sizeof(char[128]));
                 sstrjoin(buf,"",""); //init
                 for ( ; i >= 0 ; --i )
                 {
@@ -181,10 +217,33 @@ void print_node(FILE *input, ast_node *node)
             print_node(input, Child);
             fwrite("}\n", 2, 1, input);
             break;
+
+        default:
+            break;
         }
         Node = Next;
     }
+
+    if (NestedStack)
+    {
+        NestedStack = PopS(NestedStack, Nested);
+
+        for ( i = 0 ; i <= k; ++i )
+        {
+            sstrjoin(TempName[i], "", ParentSelectorName[i]);
+        }
+
+        for ( i = 0, k = 0, tmp = Nested->child_node; tmp->type == NAME ; ++i, tmp = tmp->next_node)
+        {
+            for (; j > 0; --j )
+                sstrjoin(ParentSelectorName[k], "", TempName[i], tmp->child_node->value);
+        }
+        j = k;
+
+        print_node(input, Nested->child_node);
+    }
 }
+
 
 
 
