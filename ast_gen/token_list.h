@@ -24,6 +24,7 @@ struct token_list_elem
         OPERATOR,
         PROPERTY_NAME,
         FUNC_NAME,
+        COMMENT,
         FUNC_ARGUMENT_BEGIN,
         FUNC_ARGUMENT_END
     } type;
