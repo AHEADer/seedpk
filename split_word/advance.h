@@ -687,13 +687,19 @@ void spilt(const char* _argv)
                         break;
                     case ';':
                         rollback();
-                        if (is_float == 'y')
+                        if (p==value)
                         {
-                            addToken(FLOAT);
-                            is_float = 'n';
+                            s = BeginState;
                         }
-                        else
-                            addToken(INT);
+                        else{
+                            if (is_float == 'y')
+                            {
+                                addToken(FLOAT);
+                                is_float = 'n';
+                            }
+                            else
+                            addToken(INT);    
+                        }
                         nextchar();
                         addToken(SEPARATOR);
                         s = BeginState;
@@ -776,6 +782,18 @@ void spilt(const char* _argv)
                             }
                             break;
                     //!!!!!!test
+                    //handle px:
+                    case 'p':
+                        if (value[0]>='0'&&value[0]<='9')
+                        {
+                            rollback();
+                            addToken(PX);
+                            nextchar();
+                            nextchar();
+                            addToken(DelAll);
+                            nextchar();
+                        }
+                        break;
                     default:
                         nextchar();
                         s = ValueState;
