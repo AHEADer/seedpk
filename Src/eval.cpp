@@ -400,7 +400,7 @@ int color_calc(int a, int b, int op)
 
 
     low1 = a & 0xFF;    med1 = ( a >> 8 ) & 0xFF;   high1 = ( a >> 16 ) & 0xFF;
-    low2 = b & 0xFF;    med1 = ( b >> 8 ) & 0xFF;   high1 = ( b >> 16 ) & 0xFF;
+    low2 = b & 0xFF;    med2 = ( b >> 8 ) & 0xFF;   high2 = ( b >> 16 ) & 0xFF;
 
     if (op == 0)
     {
