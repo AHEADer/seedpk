@@ -25,9 +25,9 @@ void  DealString(char *OperatorArr, double *DigitalArr, int CurrPosition);
 
 double DealNumber(const char *Str);
 
-double ComputeString(const char *Str);           /*可递归函数*/
+double ComputeString(const char *Str);
 
-
+int ComputeColor(const char *Str);
 float Compute_float(const char *Str);
 int Compute_int(const char *Str);
 
