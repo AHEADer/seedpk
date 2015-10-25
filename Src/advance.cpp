@@ -122,6 +122,17 @@ void addToken(token_list_elem::TYPE type)
         Store_in_list(raw,p);
         printf("%s %d 0\n", p, raw/*, len*/);
     } else
+    if (type == token_list_elem::token_list_elem::SELECTOR_NAME)
+    {
+        printf("%s %d 0\n"," ", type/*, len*/);
+        printf("selector begin!\n");
+        Store_in_list(type,"");
+        token_list_elem::TYPE raw = token_list_elem::token_list_elem::RAW_TEXT;
+        *p = '\0';
+        p = value;
+        Store_in_list(raw,p);
+        printf("%s %d 0\n", p, raw/*, len*/);
+    } else
     if (type == token_list_elem::token_list_elem::COLOR)
     {
         *p = '\0';
@@ -323,7 +334,16 @@ void spilt(const char* _argv)
                         nextchar();
                         switch(c){
                             case '/':
-                                addToken(token_list_elem::COMMENT);
+                                nextchar();
+                                if (c=='\n'||c=='\r')
+                                {
+                                    rollback();
+                                    ungetc('\n');
+                                    nextchar();
+                                    addToken(token_list_elem::COMMENT);
+                                }
+                                else
+                                    addToken(token_list_elem::COMMENT);
                                 s = BeginState;
                                 break;
                             default:
