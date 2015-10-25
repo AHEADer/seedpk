@@ -1,17 +1,46 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
+#define sstrjoin(...)    _sstrjoin(__VA_ARGS__, NULL)
+char *_sstrjoin(char *buf, char *delim, ...)
+{
+    char *p, *res, *d;
+    va_list ap;
+    va_start(ap, delim);
+    res = buf;
+    p = va_arg(ap, char *);
+    while(p)
+    {
+        while(*res++ = *p++)
+            /* do nothing */;
+        res--;
+        if(p = va_arg(ap, char *))
+        {
+            d = delim;
+            while(*res++ = *d++)
+                /* do nothing */;
+            res--;
+        }
+    }
+    *res = '\0';
+    va_end(ap);
+    return buf;
+}
+
+float Compute_float(const char *Str);
+int Compute_int(const char *Str);
 
 
-
+/*************************************************************************/
 int CheckString(const char *Str);   
-
 void  DealString(char *OperatorArr, double *DigitalArr, int CurrPosition); 
-
 double DealNumber(const char *Str);  
-
 double ComputeString(const char *Str); 
+int ftoi(float value);
 
+
+/***********************************************************************/
 int CheckString(const char *Str)
 {
     int iFlag         = 0;      
@@ -264,8 +293,6 @@ double ComputeString(const char *Str)
                     DealString(cStack,dTotalNum, iCharInNumberNum);
                     break;
                 }
-
-
             case '-':
                 {
                     dTotalNum[iCharInNumberNum+1] = dTotalNum[iCharInNumberNum] - dTotalNum[iCharInNumberNum+1];
@@ -273,16 +300,46 @@ double ComputeString(const char *Str)
                     DealString(cStack,dTotalNum,iCharInNumberNum);
                     break;
                 }
-
-
             default:
                 {
                     printf("operator error!");
                     break;
                 }
         }
+    }
+    return dTotalNum[0];
+}
 
+int ftoi(float value)
+{
+
+    int flag = 0;
+    int index = 0;
+    int tail = 0;
+    int n_value = 0;
+
+    memcpy(&n_value, &value, 4);
+    //抽取符号位
+    flag = ((n_value >> ((32) - 1) & 1) == 0 ? 1 : -1);
+    //抽取指数位
+    index = (((n_value >> (23)) & (0xFF)) - (127));
+    //抽取尾数位
+    tail = (n_value & (0x7FFFFF) | 1 << (23));
+    if(index < 0){  //如果指数小于0，说明该数小于1，直接返回0
+        return 0;
     }
 
-    return dTotalNum[0];
+    //将尾数右移得到整数部分
+    tail >>= ((23) - index);
+    return tail * flag;
+}
+
+float Compute_float(const char *Str)
+{
+    retrun (float)ComputeString(const char *Str);
+}
+
+int Compute_int(const char *Str)
+{
+    return ftoi((float)ComputeString(const char *Str));
 }
