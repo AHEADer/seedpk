@@ -66,7 +66,6 @@ struct _var
     union
     {
         _operation *op_list;
-        char *string_with_var;
         ast_node *func;
     };
     struct _var *next;
@@ -198,15 +197,14 @@ public:
     void copy_child(ast_node *dst, ast_node *src, _var *var_list);
     void extend_with_var_list(ast_node *node, _var *var_list, ast_node *func);
     void end_block(ast_node *content_node);
-    _ret_with_type var_call_in(char *var_name, int times, _var *var_list);
-    _ret_with_type cal_var(char *var_name, _var *var_list);
+    _ret_with_type var_call_in(char *var_name, int times, _var *var_list, int mask_num, char **mask);
+    _ret_with_type cal_var(char *var_name, _var *var_list, int mask_num, char **mask);
     char *cal_string_var(char *s, _var *var_list);
-    _ret_with_type cal_op_string(_operation *op_list, _var *var_list);
-    int var_extend(ast_node *node);
-    int func_extend();
-    int expr_extend(ast_node *node);
+    _ret_with_type cal_op_string(_operation *op, _var *var_list, int mask_num, char **mask);
+    void op_extend(ast_node *node, int mask_num, char **mask);
+    int var_extend(ast_node *node, int mask_num, char **mask);
+    int property_extend(ast_node *node, int mask_num, char **mask);
     int func_call_extend(ast_node *node);
-    int second_step();
     const ast_node *get_ast()
     {
         return root_node;

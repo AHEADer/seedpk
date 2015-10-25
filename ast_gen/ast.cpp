@@ -88,6 +88,11 @@ _operation *ast_gen::make_operation()
         current->op = *(parsing->content);
         break;
     }
+    case token_list_elem::STRING:
+    {
+        current->type = _operation::STRING;
+        current->s_string = parsing->content;
+    }
     default:
         delete result;
         return nullptr;
@@ -145,17 +150,15 @@ _var_call *ast_gen::make_var_call()
 {
     _var_call *var_call = new _var_call();
     var_call->undef_times = 0;
-    if (parsing->next->type == token_list_elem::BLOCK_BEGIN)
-    {
-        var_call->name = parsing->next->next->content;
-        var_call->undef_times = 1;
-        return var_call;
-    }
     while (parsing->type == token_list_elem::VAR_DEFINE)
     {
         ++var_call->undef_times;
         parsing = parsing->next;
+        if (parsing->type == token_list_elem::BLOCK_BEGIN)
+            parsing = parsing->next;
     }
+    while (parsing->type == token_list_elem::BLOCK_END)
+        parsing = parsing->next;
     var_call->name = parsing->content;
     parsing = parsing->next;
     return var_call;
@@ -174,8 +177,34 @@ void ast_gen::end_block(ast_node *content_node)
     }
     parsing = parsing->next;
     func_call_extend(content_node);
-    expr_extend(content_node);
-    var_extend(content_node);
+    if (new_name->func->type == ast_node::TYPE::FUNC_DEFINE)
+    {
+        int args = 0;
+        ast_node *arg;
+        for (arg = new_name->func; arg; arg = arg->next_node)
+        {
+            if (arg->type == ast_node::TYPE::FUNC_ARGUMENT)
+                ++args;
+        }
+        char **mask = new char*[args];
+        args = 0;
+        for (arg = new_name->func; arg; arg = arg->next_node)
+        {
+            if (arg->type == ast_node::TYPE::FUNC_ARGUMENT)
+            {
+                mask[args] = arg->child_node->value;
+                ++args;
+            }
+        }
+        property_extend(content_node, args, mask);
+        //var_extend(content_node,args, mask);
+        delete mask;
+    }
+    else
+    {
+        property_extend(content_node, 0, nullptr);
+        //var_extend(content_node, 0, nullptr);
+    }
 }
 
 int ast_gen::sub_block_parser(ast_node *content_node)
@@ -237,16 +266,8 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 if (parsing->type != token_list_elem::ASSIGN)
                     return -4;
                 parsing = parsing->next;
-                if (parsing->type == token_list_elem::STRING)
-                {
-                    new_name->string_with_var = parsing->content;
-                    new_name->type = _var::STRING;
-                }
-                else
-                {
-                    new_name->op_list = make_operation();
-                    new_name->type = _var::UNDECIDED;
-                }
+                new_name->op_list = make_operation();
+                new_name->type = _var::UNDECIDED;
                 _var *t1, *t2;
                 for (t1=new_name, t2=new_name->next; !(t2->type == _var::NEW_FLAG); t1=t1->next, t2=t2->next)
                 {
@@ -379,36 +400,69 @@ int ast_gen::first_step()
     return sub_block_parser(root_node);
 }
 
+void ast_gen::op_extend(ast_node *node, int mask_num, char **mask)
+{
+    _ret_with_type t = cal_op_string(node->op, node->name_list, mask_num, mask);
+    char *result = t.s_result;
+    if (result)
+    {
+        node->type = ast_node::TYPE::RAW_TEXT;
+        if (t.t == _var::STRING)
+        {
+            char *ts = new char[strlen(result) + 3];
+            char *tts = ts;
+            *tts++ = '"';
+            while (*result)
+                *tts++ = *result++;
+            *tts = '"';
+            *(tts + 1) = 0;
+            node->value = ts;
+            str_ref *new_ref = new str_ref();
+            new_ref->str = ts;
+            new_ref->next = str_list;
+            str_list = new_ref;
+        }
+        else
+            node->value = result;
+
+        node->child_node = nullptr;
+    }
+}
+
 /*********TODO*************/
-_ret_with_type ast_gen::cal_op_string(_operation *op_list, _var *var_list)
+_ret_with_type ast_gen::cal_op_string(_operation *op, _var *var_list, int mask_num, char **mask)
 {
 
 }
 
-_ret_with_type ast_gen::cal_var(char *var_name, _var *var_list)
+_ret_with_type ast_gen::cal_var(char *var_name, _var *var_list, int mask_num, char **mask)
 {
+    int i;
+        _ret_with_type ret;
+    for (i=0; i < mask_num; ++i)
+    {
+        if (!strcmp(var_name, mask[i]))
+        {
+            ret.s_result = nullptr;
+            ret.t = _var::UNDECIDED;
+            return ret;
+        }
+    }
     _var *t;
     for (t = var_list; t; t = t->next)
         if ((t->type != _var::TYPE::NEW_FLAG) && (t->type != _var::TYPE::FUNC) && (!strcmp(var_name, t->name)))
             break;
 
-    _ret_with_type ret;
     if (t->op_list)
     {
-        if (t->type == _var::STRING)
+        ret = cal_op_string(t->op_list, var_list, mask_num, mask);
+        if (ret.t != _var::UNDECIDED)
         {
-            ret.s_result = cal_string_var(t->string_with_var, var_list);
-            ret.t = _var::STRING;
-            t->v_string = ret.s_result;
-            t->string_with_var = nullptr;
-        }
-        else
-        {
-            ret = cal_op_string(t->op_list, var_list);
             t->type = ret.t;
             t->op_list = nullptr;
             t->v_text = ret.s_result;
         }
+
     }
     else
     {
@@ -418,23 +472,25 @@ _ret_with_type ast_gen::cal_var(char *var_name, _var *var_list)
     return ret;
 }
 
-_ret_with_type ast_gen::var_call_in(char *var_name, int times, _var *var_list)
+_ret_with_type ast_gen::var_call_in(char *var_name, int times, _var *var_list, int mask_num, char **mask)
 {
     _ret_with_type t;
     while (times)
     {
-        t = cal_var(var_name, var_list);
+        t = cal_var(var_name, var_list, mask_num, mask);
         var_name = t.s_result;
+        if (!var_name)
+            break;
         --times;
     }
     return t;
 }
 
-int ast_gen::var_extend(ast_node *node)
+int ast_gen::var_extend(ast_node *node, int mask_num, char **mask)
 {
     if (node->type == ast_node::VAR_CALL)
     {
-        _ret_with_type t = var_call_in(node->var_call->name, node->var_call->undef_times, node->name_list);
+        _ret_with_type t = var_call_in(node->var_call->name, node->var_call->undef_times, node->name_list, mask_num, mask);
         char *result = t.s_result;
         if (result)
         {
@@ -457,18 +513,19 @@ int ast_gen::var_extend(ast_node *node)
             else
                 node->value = result;
             find_merge(node);
+            node->child_node = nullptr;
         }
     }
     int flag;
     if (node->child_node)
     {
-        flag = var_extend(node->child_node);
+        flag = var_extend(node->child_node, mask_num, mask);
         if (!flag)
             return flag;
     }
     if (node->next_node)
     {
-        flag = var_extend(node->next_node);
+        flag = var_extend(node->next_node, mask_num, mask);
         if (!flag)
             return flag;
     }
@@ -723,7 +780,25 @@ int ast_gen::func_call_extend(ast_node *node)
     }
 }
 
-int ast_gen::second_step()
+int ast_gen::property_extend(ast_node *node, int mask_num, char **mask)
 {
+    if (node->type == ast_node::PROPERTY)
+    {
+        ast_node *name_node = node->child_node;
+        ast_node *value_node = name_node->next_node;
+        ast_node *tmp;
+        for (tmp = name_node->child_node; tmp; tmp = tmp->next_node)
+        {
+            if (tmp->type == ast_node::TYPE::VAR_CALL)
+                var_extend(tmp, mask_num, mask);
+        }
+        op_extend(value_node, mask_num, mask);
+
+    }
+    if (node->child_node)
+        property_extend(node->child_node, mask_num, mask);
+    if (node->next_node)
+        property_extend(node->next_node, mask_num, mask);
     return 0;
 }
+
