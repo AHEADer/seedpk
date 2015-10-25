@@ -66,16 +66,17 @@ char* create_string(char* head, char* end)
 {
     char a = *end;
     *end = '\0';
-    char b[64],*aa = b;
-    strcpy(b,head);
-    int i = strlen(b);
-    b[++i] = a;
-    b[i] = '\0';
+    char*b = (char*)malloc(64),*aa = b;
+    while(*head!='\0'){
+        *b++ = *head++;
+    }
+    *b++ = a;
+    *b = '\0';
     //printf("create_string:%s\n",b );
     return aa;
 }
 
-void Store_in_list(enum Category type, char* value)
+void Store_in_list(enum Category type, const char* value)
 {
     while(pp->next != NULL){
         pp = pp->next;
@@ -92,6 +93,7 @@ void hanle_varible(char* value_head,int right,int left)
     int i,add = 0;
     char *head = value_head;
     char *pp = head;
+    char *tmp;
     char have = 'n';
     if (left > right)
     {
@@ -102,7 +104,9 @@ void hanle_varible(char* value_head,int right,int left)
                     if (have == 'y')
                     {
                         Store_in_list(OPERATOR,"$");
-                        Store_in_list(STRING,create_string(value,pp));
+                        Store_in_list(STRING,create_string(head,pp));
+                        //printf("!!!!!!!!!create_string:%s",create_string(head,pp));
+                        have = 'n';
                     }
                     add = 1;
                     break;
@@ -119,12 +123,71 @@ void hanle_varible(char* value_head,int right,int left)
                     {
                         Store_in_list(OPERATOR,"$");
                         printf("%s %d 0\n","$", OPERATOR/*, len*/);
-                        Store_in_list(STRING,create_string(value,pp));
-                        printf("%s %d 0\n",create_string(value,pp), STRING/*, len*/);
+                        printf("DEBUG!!!!!!!!\n");
+                        pp--;
+                        Store_in_list(STRING,create_string(value_head,pp));
+                        pp++;
+                        printf("%s %d 0\n",create_string(value_head,pp), STRING/*, len*/);
+                        //have = 'n';
                     }
                     break;
                 default:
+                    have = 'y';
                     add = -1;
+            }
+            pp++;
+        }
+    }
+    else if(left == right)
+    {
+        while(*pp!='\0'){
+            switch(*pp){
+                case '@':
+                    if (have == 'y')
+                    {
+                        Store_in_list(OPERATOR,"$");
+                        char *store = create_string(value_head,pp);
+                        Store_in_list(STRING,store);
+                        printf("!!!!!!!!!create_string:%s",store);
+                        have = 'n';
+                    }
+                    add = 1;
+                    break;
+                case '{':
+                    if (add == 1)
+                    {
+                        Store_in_list(OPERATOR,"$");
+                        Store_in_list(VAR_DEFINE,"@");
+                        Store_in_list(BLOCK_BEGIN,"{");
+                    }
+                    break;
+                case '\"':
+                    if (have == 'y')
+                    {
+                        Store_in_list(OPERATOR,"$");
+                        printf("%s %d 0\n","$", OPERATOR/*, len*/);
+                        pp--;
+                        Store_in_list(STRING,create_string(head,pp));
+                        pp++;
+                        printf("%s %d 0\n",create_string(head,pp), STRING/*, len*/);
+                        //have = 'n';
+                    }
+                    break;
+                case '}':
+                    tmp = pp;
+                    tmp--;
+                    for(;*pp!='{';pp--);
+                    pp++;
+                    Store_in_list(RAW_TEXT,create_string(pp,tmp));
+                    printf("%s %d 0\n",create_string(pp,tmp), RAW_TEXT/*, len*/);
+                    printf("!!!!!!!!!create_string:%s!!!!!!!!!!!!!!\n",create_string(pp,tmp));
+                    pp = ++tmp;
+                    Store_in_list(BLOCK_END,"}");
+                    have = 'n';
+                    break;
+                default:
+                    add = -1;
+                    have = 'y';
             }
             pp++;
         }
@@ -997,7 +1060,7 @@ void spilt(const char* _argv)
                                 //ungetc('@',stdin);
                                 p--;
                                 addToken(STRING);
-                                printf("predict\n");
+                                //printf("predict\n");
                                 ungetc('@',stdin);
                                 nextchar();
                                 nextchar();
@@ -1018,7 +1081,10 @@ void spilt(const char* _argv)
                     case '\"':
                         //p--;
                         *p = '\0';
-                        hanle_varible(value,right,left);
+                        p = value;
+                        hanle_varible(p,right,left);
+                        *p = '\0';
+                        nextchar();
                         s = ValueState;
                         break;
                     case '}':
