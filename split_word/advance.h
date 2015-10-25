@@ -30,6 +30,7 @@ enum Category {
     FUNC_ARGUMENT_BEGIN, //15
     FUNC_ARGUMENT_END,
     COMMENT,             //17
+    PX,
     Space,
     DelAll,
 };
