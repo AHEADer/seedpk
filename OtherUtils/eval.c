@@ -38,6 +38,8 @@ void  DealString(char *OperatorArr, double *DigitalArr, int CurrPosition);
 double DealNumber(const char *Str);
 double ComputeString(const char *Str);
 
+
+/*************************************************************************/
 int CheckString(const char *Str)
 {
     int iFlag         = 0;      //k用于检查括号是否配对
@@ -80,19 +82,6 @@ int CheckString(const char *Str)
 }
 
 
-/*****************************************************************************************************************
- * 函数名： void  DealString(char *OperatorArr, double *DigitalArr, int CurrPosition)
- * 输入参数：
- char *OperatorArr :  运算符数组
- double *DigitalArr:  数值数组
- int CurrPosition:    当前运算符数组位置
- * 返回参数:无
- * 功能：
- 将当前已经完成运算的运算符消去，同时将数值数组的位置调整以进行下一次运算。
- 传入值CurrPosition若为3，则当前符号的数组位置为3.
- OperatorArr[3]=OperatorArr[3+1].......OperatorArr[len-2]=OperatorArr[len-1]  OperatorArr[len-1]='\0';
- DigitalArr[i]=DigitalArr[i+1].......DigitalArr[len-1]=DigitalArr[len]  因为数值比运算符多一个。
- ******************************************************************************************************************/
 void  DealString(char *OperatorArr, double *DigitalArr, int CurrPosition)
 {
     int iFlag = 0;
@@ -107,15 +96,6 @@ void  DealString(char *OperatorArr, double *DigitalArr, int CurrPosition)
 }
 
 
-/************************************************************************************
- * 函数名：  double DealNumber(char *Str)
- * 输入参数：char *Str :由数字和小数点组成的字符，用以转换成double型的数值。
- * 返回参数：dValueReturn:返回转换好的值。
- * 功能：
- 对于输入的字符串，先将其小数点以前的部分复制到tempStr[]数组中，
- 若有小数点，则将将小数点之后的数值，也就是小数部分先进行计算,值存入dValueReturn中
- 计算完成后，再对整数部分进行计算，值加上小数部分的值，存入dValueReturn中。
- *************************************************************************************/
 double DealNumber(const char *Str)
 {
     double dValueReturn = 0.0;
@@ -180,20 +160,6 @@ double DealNumber(const char *Str)
 }
 
 
-/************************************************************************************
- * 函数名： double ComputeString(char *Str)
- * 输入参数：
- char *Str: 即将进行运算的字符串型数学表达式，如3.5+(2*3/5)
- * 返回参数：
- dTotalNum[0]:计算结果将放入dTotalNum[0]中
- * 功能：
- 将输入的字符串中的数字分别调用DealNumber(char *Str)函数进行数值变换，再将其依
- 次存入doulbe dTotalNum[i]中，将加减乘除运算符依次存入字符串符号数组中，
- 然后如果遇到括号，则将括号内的字符串存入另一字符数组中，然后用此
- ComputeString(char *Str) 递归函数进行递归运算。 然后根据先乘除，后加减的顺序对已
- 存入数组的数值根 据存入字符串符号数组的运算符进行运算。结果存入dTotalNum[0]中。
- 返回最终结果。
- *************************************************************************************/
 double ComputeString(const char *Str)           /*可递归函数*/
 {                                /*取得数值字符串，并调用DealNumber转换成double*/
     char cStr[100] = {'\0'}, cTotalChar[30] = {'\0'};   /*cStr保存当前的表达式串,cTotalChar保存一个数的所有字符*/
