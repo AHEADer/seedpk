@@ -33,18 +33,17 @@ int Compute_int(const char *Str);
 
 
 /*************************************************************************/
-int CheckString(const char *Str);   
-void  DealString(char *OperatorArr, double *DigitalArr, int CurrPosition); 
-double DealNumber(const char *Str);  
-double ComputeString(const char *Str); 
-int ftoi(float value);
+int CheckString(const char *Str);
+void  DealString(char *OperatorArr, double *DigitalArr, int CurrPosition);
+double DealNumber(const char *Str);
+double ComputeString(const char *Str);
 
 
-/***********************************************************************/
+/*************************************************************************/
 int CheckString(const char *Str)
 {
-    int iFlag         = 0;      
-    int iCharacterNum = 0;     
+    int iFlag         = 0;      //k用于检查括号是否配对
+    int iCharacterNum = 0;      //iCharacterNum用于统计输入的字符的个数
     while ((*Str) != '\0')
     {
         if (((*Str)>='0' && (*Str)<='9') || ((*Str)=='+') ||
@@ -87,7 +86,7 @@ void  DealString(char *OperatorArr, double *DigitalArr, int CurrPosition)
 {
     int iFlag = 0;
     int iOperatorArrLen = strlen(OperatorArr);
-    for (iFlag = CurrPosition; iFlag < iOperatorArrLen; iFlag ++) 
+    for (iFlag = CurrPosition; iFlag < iOperatorArrLen; iFlag ++)   /*将已经运算过的符号，空出来的位置用后面的符号来填充，即把乘和除号的位置用后面的加和减号填充*/
     {
         OperatorArr[iFlag] = OperatorArr[iFlag+1];
         DigitalArr[iFlag] = DigitalArr[iFlag+1];
@@ -107,6 +106,7 @@ double DealNumber(const char *Str)
     char   tempStr[100] = {0};
     int    iTempi = 0;
     int    iStart = 0;
+    int    iFlag = 1;            /*正负符号指示器，若为1则为正数，为－1，此数为负数*/
 
     iStrLen = strlen(Str);
 
@@ -124,16 +124,16 @@ double DealNumber(const char *Str)
             iFloat = iLoop;
             break;
         }
-        tempStr[iTempi++] = Str[iLoop];  
+        tempStr[iTempi++] = Str[iLoop];  /*将整数部分复制到tempStr[]中*/
     }
     tempStr[iTempi] = '\0';
 
 
     if (iFloat != 0)
     {
-        for (iLoop = iFloat+1; iLoop < iStrLen; iLoop ++) 
+        for (iLoop = iFloat+1; iLoop < iStrLen; iLoop ++) /*将小数部分计算出来*/
         {
-            if (Str[iLoop] == '.')  
+            if (Str[iLoop] == '.')  /*如果有多余的小数点，则表示输入错误*/
             {
                 printf("There is more that one dot '.' in number!error!!!\n");
                 exit(0);
@@ -147,7 +147,7 @@ double DealNumber(const char *Str)
     dFlag = 1.0;
 
 
-    iStrLen = strlen(tempStr);        
+    iStrLen = strlen(tempStr);           /*计算整数部分*/
     for (iLoop = iStrLen-1; iLoop >= 0; iLoop --)
     {
         dValueReturn = dValueReturn + (dFlag * (tempStr[iLoop] - 48));
@@ -160,8 +160,8 @@ double DealNumber(const char *Str)
 }
 
 
-double ComputeString(const char *Str)
-{                                
+double ComputeString(const char *Str)           /*可递归函数*/
+{                                /*取得数值字符串，并调用DealNumber转换成double*/
     char cStr[100] = {'\0'}, cTotalChar[30] = {'\0'};   /*cStr保存当前的表达式串,cTotalChar保存一个数的所有字符*/
     char cStack[80] = {'\0'};                  /*保存所有的符号的堆栈*/
     int iCharPos = 0;                   /*保存符号的位置指针*/
@@ -293,6 +293,8 @@ double ComputeString(const char *Str)
                     DealString(cStack,dTotalNum, iCharInNumberNum);
                     break;
                 }
+
+
             case '-':
                 {
                     dTotalNum[iCharInNumberNum+1] = dTotalNum[iCharInNumberNum] - dTotalNum[iCharInNumberNum+1];
@@ -300,46 +302,28 @@ double ComputeString(const char *Str)
                     DealString(cStack,dTotalNum,iCharInNumberNum);
                     break;
                 }
+
+
             default:
                 {
                     printf("operator error!");
                     break;
                 }
         }
+
     }
+
     return dTotalNum[0];
 }
 
-int ftoi(float value)
-{
 
-    int flag = 0;
-    int index = 0;
-    int tail = 0;
-    int n_value = 0;
-
-    memcpy(&n_value, &value, 4);
-    //抽取符号位
-    flag = ((n_value >> ((32) - 1) & 1) == 0 ? 1 : -1);
-    //抽取指数位
-    index = (((n_value >> (23)) & (0xFF)) - (127));
-    //抽取尾数位
-    tail = (n_value & (0x7FFFFF) | 1 << (23));
-    if(index < 0){  //如果指数小于0，说明该数小于1，直接返回0
-        return 0;
-    }
-
-    //将尾数右移得到整数部分
-    tail >>= ((23) - index);
-    return tail * flag;
-}
 
 float Compute_float(const char *Str)
 {
-    retrun (float)ComputeString(const char *Str);
+    return (float)ComputeString(Str);
 }
 
 int Compute_int(const char *Str)
 {
-    return ftoi((float)ComputeString(const char *Str));
+    return (int)ComputeString(Str);
 }
