@@ -262,24 +262,28 @@ double ComputeString(const char *Str)           /*可递归函数*/
 }
 
 
-int ComputeColor(const char *Str)
-{
-    char cStr[100] = {'\0'}, cTotalChar[30] = {'\0'};
-    char cStack[80] = {'\0'};
-    int iCharPos = 0;
-    double dTotalNum[80] = {0.0};
-    int iDigitalPos = 0;
-    int iBracketFlag = 0;
-    int iCharInBracketNum = 0, iCharInNumberNum = 0;
-    int iNumOfMulAndDiv = 0;
-    int iNumOfAddAndDec = 0;
-    while ((*Str) != '\0')
+
+int ComputeColor(const char *Str)           /*可递归函数*/
+{                                /*取得数值字符串，并调用DealNumber转换成double*/
+    char cStr[100] = {'\0'}, cTotalChar[30] = {'\0'};   /*cStr保存当前的表达式串,cTotalChar保存一个数的所有字符*/
+    char cStack[80] = {'\0'};                  /*保存所有的符号的堆栈*/
+    int iCharPos = 0;                   /*保存符号的位置指针*/
+    double dTotalNum[80] = {0.0};     /*保存当前所有的数的一个堆栈*/
+    int iDigitalPos = 0;              /*保存数字位置指针*/
+    int iBracketFlag = 0;             /*若iBracketFlag=1则表示有一对括号*/
+    int iCharInBracketNum = 0, iCharInNumberNum = 0;  /*iCharInBracketNum保存新括号内的字符数, iCharInNumberNum保存number里的字符位置*/
+    int iNumOfMulAndDiv = 0;                         /*乘除符号数量*/
+    int iNumOfAddAndDec = 0;                         /*加减符号数量*/
+
+
+    while ((*Str) != '\0')           /*当p==1 和k==0时，表示已经把括号里的内容全部复制到g[100]中了*/
     {
         iBracketFlag = 0;
         iCharInBracketNum = 0;
+
         switch (*Str)
         {
-            case '+':
+            case '+':            /*当前字符为加减乘除时则表示*/
             case '-':
             case '*':
             case '/':
@@ -301,8 +305,10 @@ int ComputeColor(const char *Str)
                     }
                     break;
                 }
-            case '(':
-                {
+
+
+            case '(':   /*有括号，则将当前括号作用范围内的全部字符保存，作为*/
+                {           /*一个新的字符表达式进行递归调用ComputeString函数计算。*/
                     iBracketFlag ++;
                     while(iBracketFlag > 0)
                     {
@@ -323,6 +329,8 @@ int ComputeColor(const char *Str)
                     dTotalNum[iDigitalPos++] = ComputeString(cStr);
                     break;
                 }
+
+
             default:
                 {
                     cTotalChar[iCharInNumberNum++] = (*Str);
@@ -334,10 +342,17 @@ int ComputeColor(const char *Str)
                     break;
                 }
         }
+
         Str ++;
     }
+
+
     cStack[iCharPos] = '\0';
+
+
     iCharInNumberNum = 0;
+
+
     while (iNumOfMulAndDiv > 0)
     {
         switch (cStack[iCharInNumberNum])
@@ -349,6 +364,8 @@ int ComputeColor(const char *Str)
                     DealString(cStack,dTotalNum, iCharInNumberNum);
                     break;
                 }
+
+
             case '/':
                 {
                     iNumOfMulAndDiv --;
@@ -356,6 +373,8 @@ int ComputeColor(const char *Str)
                     DealString(cStack, dTotalNum, iCharInNumberNum);
                     break;
                 }
+
+
             default:
                 {
                     iCharInNumberNum ++;
@@ -363,6 +382,8 @@ int ComputeColor(const char *Str)
                 }
         }
     }
+
+
     iCharInNumberNum = 0;
     while (iNumOfAddAndDec > 0)
     {
@@ -370,27 +391,36 @@ int ComputeColor(const char *Str)
         {
             case '+':
                 {
-                    dTotalNum[iCharInNumberNum+1] = (double)color_calc((int)dTotalNum[iCharInNumberNum], (int)dTotalNum[iCharInNumberNum+1], 0);
+                    dTotalNum[iCharInNumberNum+1] = (float)color_calc((int)dTotalNum[iCharInNumberNum], (int)dTotalNum[iCharInNumberNum+1], 0);
                     iNumOfAddAndDec --;
                     DealString(cStack,dTotalNum, iCharInNumberNum);
                     break;
                 }
+
+
             case '-':
                 {
-                    dTotalNum[iCharInNumberNum+1] = (double)color_calc((int)dTotalNum[iCharInNumberNum], (int)dTotalNum[iCharInNumberNum+1], 1);
+                    dTotalNum[iCharInNumberNum+1] = (float)color_calc((int)dTotalNum[iCharInNumberNum], (int)dTotalNum[iCharInNumberNum+1], 1);
                     iNumOfAddAndDec --;
                     DealString(cStack,dTotalNum,iCharInNumberNum);
                     break;
                 }
+
+
             default:
                 {
                     printf("operator error!");
                     break;
                 }
         }
+
     }
+
     return (int)dTotalNum[0];
 }
+
+
+
 
 int color_calc(int a, int b, int op)
 {

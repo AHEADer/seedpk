@@ -259,8 +259,11 @@ _var_call *ast_gen::make_var_call()
 void ast_gen::end_block(ast_node *content_node)
 {
     _var *new_name = new _var(_var::FUNC);
-    new_name->func = content_node->parent_node;
-    new_name->next = content_node->name_list->next;
+    if (content_node->parent_node)
+    {
+        new_name->func = content_node->parent_node;
+        new_name->next = content_node->parent_node->name_list->next;
+    }
     if (new_name->func)
     {
         func_call_extend(content_node);
@@ -298,7 +301,8 @@ void ast_gen::end_block(ast_node *content_node)
             func_node = new_name->func;
         }
     }
-    content_node->name_list->next = new_name;
+    if (content_node->parent_node)
+        content_node->parent_node->name_list->next = new_name;
 }
 
 int ast_gen::sub_block_parser(ast_node *content_node)
@@ -485,7 +489,8 @@ int ast_gen::sub_block_parser(ast_node *content_node)
             parsing = parsing->next;
         }
     }
-    end_block(content_node);
+    if (parsing)
+        end_block(content_node);
     return 0;
 }
 
@@ -622,6 +627,8 @@ _ret_with_type ast_gen::cal_op_string(_operation *op, _var *var_list, int mask_n
         {
             if (t->type == _operation::OPERATOR)
                 *now++ = t->op;
+            else if (t->type == _operation::INT)
+                now += sprintf(now, "%d", t->i_val);
             else
                 now += sprintf(now, "%f", t->f_val);
         }
@@ -654,6 +661,8 @@ _ret_with_type ast_gen::cal_op_string(_operation *op, _var *var_list, int mask_n
         {
             if (t->type == _operation::OPERATOR)
                 *now++ = t->op;
+            else if (t->type == _operation::INT)
+                now += sprintf(now, "%d", t->i_val);
             else
                 now += sprintf(now, "%f", t->f_val);
         }
@@ -905,11 +914,16 @@ void ast_gen::copy_child(ast_node *dst, ast_node *src, _var *var_list)
         return;
     }
     ast_node *s_copying = src->child_node, *d_copying;
-    dst->child_node = new ast_node(s_copying->type, nullptr, dst, var_list);
-    dst->child_node->value = s_copying->value;
-    copy_child(dst->child_node, s_copying, var_list);
-    d_copying = dst->child_node;
-    s_copying = s_copying->next_node;
+    if (s_copying)
+    {
+        dst->child_node = new ast_node(s_copying->type, nullptr, dst, var_list);
+        dst->child_node->value = s_copying->value;
+        copy_child(dst->child_node, s_copying, var_list);
+        d_copying = dst->child_node;
+        s_copying = s_copying->next_node;
+    }
+    else
+        dst->child_node = nullptr;
     while (s_copying)
     {
         d_copying->next_node = new ast_node(s_copying->type, d_copying, src, var_list);

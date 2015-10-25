@@ -9,6 +9,7 @@ char ParentSelectorName[64][128]= {'\0'};           //store combination of paren
 char TempName[64][128]= {'\0'};
 int k = 0;                                          //temp counter
 int m = 0;
+int first = 1;
 
 
 /*Function Entry*/
@@ -18,123 +19,94 @@ int CssPrint_main(ast_node *root, const char *filename)
     FILE *css_file;
     css_file = open_file(filename, "w");
 
-    LinkStack NestedStack = Init_LinkStack();
     if (root->type == ast_node::TYPE::ROOT)
-        print_node(css_file, root->child_node, NestedStack);
+    {
+        print_node(css_file, root->child_node, "");
+    }
     else
-        print_node(stdout, root, NestedStack);             //if ast_node dont start with 'root' or filename == null, will print cssfile to stdout
+    {
+        print_node(stdout, root, "");
+    }             //if ast_node dont start with 'root' or filename == null, will print cssfile to stdout
     return 0;
 }
 
 /*Node Recursive Function*/
-void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
+void print_node(FILE *input, ast_node *node, const char *now_name)
 {
-    ast_node *Node;
-    ast_node *Next;
-    ast_node *Child;
-    ast_node *Parent;
-    ast_node **Nested;
+    if (!node)
+        return;
+    printf("INFO : Entry into type %d\n", node->type);
 
-    Node = node;
-
-    LinkStack ChildNestedStack = Init_LinkStack();
-    char* buf;
-    ast_node *tmp;
-
-    while(Node)
+    switch(node->type)
     {
-        Next = Node->next_node;
-        Child = Node->child_node;
-        Parent = Node->parent_node;
+    case ast_node::TYPE::RAW_TEXT:      // -> has value. The end of all the nodes
+        write_file(input, node->value);
+        print_node(input, node->next_node, now_name);
+        break;
 
-        printf("INFO : Entry into type %d\n", Node->type);
+    case ast_node::TYPE::COMMENT:       // -> only one ' has ast_node::TYPE::RAW_TEXT->value
+        print_node(input, node->child_node, now_name);
+        print_node(input, node->next_node, now_name);
+        break;
 
-        switch(Node->type)
+    case ast_node::TYPE::SELECTOR:      //  -> has ast_node::TYPE::NAME and ast_node::TYPE::CONTENT
+    {
+        printf("Before Push INFO : entry selector and next type is %d\n", node->child_node->type);
+        printf("Before Push INFO : entry selector and next next type is %d\n", node->child_node->child_node->type);
+        if (node->parent_node->type != ast_node::ROOT)
+            print_node(input, node->next_node, now_name);
+        ast_node *name_node;
+        int c = 1;
+        char *new_name = new char[1024];
+        strcpy(new_name, now_name);
+        for (name_node = node->child_node; name_node; name_node = name_node->next_node)
         {
-        case ast_node::TYPE::RAW_TEXT:      // -> has value. The end of all the nodes
-            write_file(input, Node->value);
-            break;
-
-        case ast_node::TYPE::COMMENT:       // -> only one ' has ast_node::TYPE::RAW_TEXT->value
-            print_node(input, Child, NestedStack);
-            break;
-
-        case ast_node::TYPE::SELECTOR:      //  -> has ast_node::TYPE::NAME and ast_node::TYPE::CONTENT
-
-            printf("Before Push INFO : entry selector and next type is %d\n", Node->child_node->type);
-            printf("Before Push INFO : entry selector and next next type is %d\n", Node->child_node->child_node->type);
-
-            NestedStack = PushS(NestedStack, Node);             /*Push Child Seletor*/
-            if (Next)
-                print_node(input, Next, ChildNestedStack);
-            while (NestedStack)             /*To handle child selector*/
+            if (name_node->type == ast_node::NAME)
             {
-                Nested = (ast_node **) malloc(sizeof(ast_node *));
-                NestedStack = PopS(NestedStack, Nested);
-
-                printf("Nested - INFO : type %d\n", (*Nested)->type);
-
-                for ( i = 0 ; i < k ; ++i )
+                if (c)
                 {
-                    sstrjoin(ParentSelectorName[i], "", TempName[i]);
-                    printf("TempName  %s:",TempName[i]);
+                    sstrjoin(new_name, " ", new_name, name_node->child_node->value);
+                    c=0;
                 }
-                m = i;
-
-                for ( i = 0, k = 0, tmp = (*Nested)->child_node; tmp && tmp->type == ast_node::TYPE::NAME ; ++i, tmp = tmp->next_node)
-                {
-                    for (; j >= 0; --j )
-                    {
-                        sstrjoin(TempName[k], "", ParentSelectorName[i], tmp->child_node->value);
-                        printf("%s",TempName[k]);
-                        ++k;
-                    }
-                }
-                j = k;
-
-                print_node(input, (*Nested)->child_node, ChildNestedStack);
+                else
+                    sstrjoin(new_name, ",", new_name, name_node->child_node->value);
             }
-            break;
+        }
+        write_file(input, new_name);
+        print_node(input, node->child_node, new_name);
+        write_file(input, "}\n");
+        delete new_name;
+        if (node->parent_node->type == ast_node::ROOT)
+            print_node(input, node->next_node, now_name);
+    }
+    break;
 
-        case ast_node::TYPE::PROPERTY:      // -> has ast_node::TYPE::NAME and ast_node::TYPE::RAW_TEXT
-            print_node(input, Child, NestedStack);
-            write_file(input, ";\n");
-            break;
+    case ast_node::TYPE::PROPERTY:      // -> has ast_node::TYPE::NAME and ast_node::TYPE::RAW_TEXT
+        print_node(input, node->child_node, now_name);
+        write_file(input, ";\n");
+        print_node(input, node->next_node, now_name);
+        break;
 
-        case ast_node::TYPE::NAME:          //  has ast_node::TYPE::RAW_TEXT
-            if (Parent->type == ast_node::TYPE::SELECTOR)
-            {
-                buf = (char *)malloc(sizeof(char[128]));
-                sstrjoin(buf, "", "");
-                for ( ; m >= 0 ; --m )
-                {
-                    sstrjoin(buf, "", ParentSelectorName[m], strcmp(ParentSelectorName[m], "")?" ":"", Child->value);
-                    if ( i > 1 )
-                        sstrjoin(buf, "", buf, ",\n");
-                }
-                Child->value = buf;
-            }
-
-            print_node(input, Child, NestedStack);
-
-            if (Next && Next->type == ast_node::TYPE::NAME)
-                write_file(input, ",\n");
-            else if (Parent->type == ast_node::TYPE::PROPERTY)
-                write_file(input, ":");
-
-            break;
-
-        case ast_node::TYPE::CONTENT:       // -> has all other TYPE
-            write_file(input, "{\n");
-            print_node(input, Child, NestedStack);
-            write_file(input, "}\n");
-            break;
-
-        default:
-            fprintf(stderr, "Error: Unkown Type of Node, %d\n", Node->type);
+    case ast_node::TYPE::NAME:          //  has ast_node::TYPE::RAW_TEXT
+        if (node->parent_node->type == ast_node::TYPE::SELECTOR)
+        {
+            print_node(input, node->next_node, now_name);
             break;
         }
-        Node = Next;
+        print_node(input, node->child_node, now_name);
+        if (node->parent_node->type == ast_node::TYPE::PROPERTY)
+            write_file(input, ":");
+        print_node(input, node->next_node, now_name);
+        break;
+
+    case ast_node::TYPE::CONTENT:       // -> has all other TYPE
+        write_file(input, "{\n");
+        print_node(input, node->child_node, now_name);
+        break;
+
+    default:
+        fprintf(stderr, "Error: Unkown Type of Node, %d\n", node->type);
+        break;
     }
 
 }

@@ -19,7 +19,8 @@ typedef struct NODE
 }stack, *LinkStack;
 
 /*String Concatenation*/
-void print_node(FILE *input, ast_node *node, LinkStack NestedStack);
+int CssPrint_main(ast_node *root, const char *filename);
+void print_node(FILE *input, ast_node *node, const char *now_name);
 void close_file(const char *filename, FILE *file);
 FILE *open_file(const char *filename, const char *opt);
 void write_file(FILE *input, const char *content);
