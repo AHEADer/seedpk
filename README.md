@@ -7,10 +7,10 @@ Less Compiler
 by lkx810, hyrathb, AHEADer in Hust UniqueStudio
 
 ## 编译环境
-**unkown**
+g++ 5.2.0
 
 ## 目录结构
-**unkown**
+代码在Src下,include目录下包含了头文件,
 
 ## 实现功能
 
