@@ -164,8 +164,8 @@ void delSpace() {
     //column --;
 }
 
-void print_list(token_list_elem **head){
-    token_list_elem *p = (*head)->next;
+void print_list(token_list_elem *head){
+    token_list_elem *p = head->next;
     printf("what list contain:\n");
     while(p!=NULL)
     {

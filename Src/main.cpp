@@ -17,12 +17,15 @@ int main(int argc, char **argv)
 
     pp = NULL;
     token_list_elem *init = new token_list_elem();
-    //token_list_elem *init = (token_list_elem*)malloc(sizeof(token_list_elem));
     pp = init;
     init->next = NULL;
     spilt(argv[1]);
-    //init = init->next;
-    print_list(&init);
+    print_list(init);
+
+    token_list tokens;
+    tokens.head = init->next;
+    ast_gen *tree = new ast_gen(tokens);
+    tree->first_step();
 
     return 0;
 }

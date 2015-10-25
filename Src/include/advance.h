@@ -39,7 +39,7 @@ void addLink();
 void addToken(token_list_elem::TYPE type);
 void rollback();
 void delSpace();
-void print_list(token_list_elem **head);
+void print_list(token_list_elem *head);
 void spilt(const char* _argv);
 
 #endif

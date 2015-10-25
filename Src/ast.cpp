@@ -122,6 +122,14 @@ _operation *ast_gen::make_operation()
         current->type = _operation::STRING;
         current->s_string = parsing->content;
         c=OTHER;
+        break;
+    }
+    case token_list_elem::RAW_TEXT:
+    {
+        current->type = _operation::RAW_TEXT;
+        current->text = parsing->content;
+        c=OTHER;
+        break;
     }
     default:
         delete result;
@@ -337,8 +345,11 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 parsing = parsing->next;
                 _var *new_name = new _var(_var::UNDECIDED);
                 new_name->name = parsing->content;
-                new_name->next = current_node->name_list->next;
-                current_node->name_list->next = new_name;
+                if (current_node)
+                {
+                    new_name->next = current_node->name_list->next;
+                    current_node->name_list->next = new_name;
+                }
                 parsing = parsing->next;
                 if (parsing->type != token_list_elem::ASSIGN)
                     return -4;
@@ -346,7 +357,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 new_name->op_list = make_operation();
                 new_name->type = _var::UNDECIDED;
                 _var *t1, *t2;
-                for (t1=new_name, t2=new_name->next; !(t2->type == _var::NEW_FLAG); t1=t1->next, t2=t2->next)
+                for (t1=new_name, t2=new_name->next; (t2) && !(t2->type == _var::NEW_FLAG); t1=t1->next, t2=t2->next)
                 {
                     t1->next = t2->next;
                     delete t2;
