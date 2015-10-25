@@ -1,14 +1,6 @@
-#include "CssPrint.h"
-
-/*Some Fuction in CssPrint.h*/
-void print_node(FILE *input, ast_node *node, LinkStack NestedStack);
-void *close_file(const char *filename, FILE *file);
-FILE *open_file(const char *filename, const char *opt);
-void write_file(FILE *input, const char *content);
-/*char *sstrjoin(char *buf, char *delim, ...);*/
-LinkStack PopS(LinkStack top, ast_node **x);
-LinkStack PushS(LinkStack top, ast_node *x);
-/**/
+#include "include/CssPrint.h"
+#include "include/ast.h"
+#include "include/eval.h"
 
 
 /*Global variable*/
@@ -18,6 +10,7 @@ char TempName[64][128]={'\0'};
 int k = 0;                                          //temp counter
 int m = 0;
 
+
 /*Function Entry*/
 int CssPrint_main(ast_node *root, const char *filename)
 {
@@ -26,7 +19,7 @@ int CssPrint_main(ast_node *root, const char *filename)
     css_file = open_file(filename, "w");
 
     LinkStack NestedStack = Init_LinkStack();
-    if (root->type == ROOT)
+    if (root->type == ast_node::TYPE::ROOT)
         print_node(css_file, root->child_node, NestedStack);
     else
         print_node(stdout, root, NestedStack);             //if ast_node dont start with 'root' or filename == null, will print cssfile to stdout
@@ -57,15 +50,15 @@ void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
 
         switch(Node->type)
         {
-        case RAW_TEXT:      // -> has value. The end of all the nodes
+        case ast_node::TYPE::RAW_TEXT:      // -> has value. The end of all the nodes
             write_file(input, Node->value);
             break;
 
-        case COMMENT:       // -> only one ' has RAW_TEXT->value
+        case ast_node::TYPE::COMMENT:       // -> only one ' has ast_node::TYPE::RAW_TEXT->value
             print_node(input, Child, NestedStack);
             break;
 
-        case SELECTOR:      //  -> has NAME and CONTENT
+        case ast_node::TYPE::SELECTOR:      //  -> has ast_node::TYPE::NAME and ast_node::TYPE::CONTENT
 
             printf("Before Push INFO : entry selector and next type is %d\n", Node->child_node->type);
             printf("Before Push INFO : entry selector and next next type is %d\n", Node->child_node->child_node->type);
@@ -73,13 +66,13 @@ void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
             NestedStack = PushS(NestedStack, Node);             /*Push Child Seletor*/
             break;
 
-        case PROPERTY:      // -> has NAME and RAW_TEXT
+        case ast_node::TYPE::PROPERTY:      // -> has ast_node::TYPE::NAME and ast_node::TYPE::RAW_TEXT
             print_node(input, Child, NestedStack);
             write_file(input, ";\n");
             break;
 
-        case NAME:          //  has RAW_TEXT
-            if (Parent->type == SELECTOR)
+        case ast_node::TYPE::NAME:          //  has ast_node::TYPE::RAW_TEXT
+            if (Parent->type == ast_node::TYPE::SELECTOR)
             {
                 buf = (char *)malloc(sizeof(char[128]));
                 sstrjoin(buf, "", "");
@@ -94,14 +87,14 @@ void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
 
             print_node(input, Child, NestedStack);
 
-            if (Next && Next->type == NAME)
+            if (Next && Next->type == ast_node::TYPE::NAME)
                 write_file(input, ",\n");
-            else if (Parent->type == PROPERTY)
+            else if (Parent->type == ast_node::TYPE::PROPERTY)
                 write_file(input, ":");
 
             break;
 
-        case CONTENT:       // -> has all other TYPE
+        case ast_node::TYPE::CONTENT:       // -> has all other TYPE
             write_file(input, "{\n");
             print_node(input, Child, NestedStack);
             write_file(input, "}\n");
@@ -116,7 +109,7 @@ void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
 
     while (NestedStack)             /*To handle child selector*/
     {
-        Nested = malloc(sizeof(ast_node *));
+        Nested = (ast_node **) malloc(sizeof(ast_node *));
         NestedStack = PopS(NestedStack, Nested);
 
         printf("Nested - INFO : type %d\n", (*Nested)->type);
@@ -128,7 +121,7 @@ void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
         }
         m = i;
 
-        for ( i = 0, k = 0, tmp = (*Nested)->child_node; tmp && tmp->type == NAME ; ++i, tmp = tmp->next_node)
+        for ( i = 0, k = 0, tmp = (*Nested)->child_node; tmp && tmp->type == ast_node::TYPE::NAME ; ++i, tmp = tmp->next_node)
         {
             for (; j >= 0; --j )
             {
@@ -144,3 +137,74 @@ void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
     }
 
 }
+LinkStack Init_LinkStack(){
+     return NULL;
+}
+
+LinkStack PushS(LinkStack top, ast_node *x)
+{
+    LinkStack s;
+    s=(LinkStack)malloc(sizeof(stack));
+    s->data=x;
+    s->next=top;
+    top=s;
+    printf("PushS - INFO : type %d\n", x->type);
+    return top;
+}
+
+LinkStack PopS(LinkStack top, ast_node **x)
+{
+    LinkStack p;
+    if(top ==NULL)return NULL;
+    else
+    {
+        *x=top->data;
+        p=top;
+        top=top->next;
+        free(p);
+       printf("PopS - INFO : type %d\n", (*x)->type);
+        return top;
+    }
+}
+
+/*File Related Functions*/
+void msg_printf(const char *msg, int lever)
+{
+    if (lever == 0)
+        fprintf(stdout, "INFO : %s \n", msg);
+    if (lever == -1)
+        fprintf(stderr, "ERROR: %s \n", msg);
+}
+
+void write_file(FILE *input, const char *content)
+{
+    printf("PRINT:  %s\n",content);
+    fprintf(input,"%s",content);
+}
+
+FILE *open_file(const char *filename, const char *opt)
+{
+    FILE *input;
+    if (!filename)
+         input = stdout;
+    else
+    {
+        input = fopen(filename, opt);
+        if (!input) {
+            fprintf(stderr, "error: cannot open %s: %s", filename, strerror(errno));
+            return NULL;
+        }
+
+    }
+    return input;
+}
+
+void close_file(const char *filename, FILE *file)
+{
+    if(file != stdout)
+        fclose(file);
+}
+
+
+
+
