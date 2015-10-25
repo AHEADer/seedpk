@@ -641,7 +641,7 @@ void spilt(const char* _argv)
                         addToken(token_list_elem::token_list_elem::RAW_TEXT);                //not sure,test,then
                         nextchar();
                         addToken(token_list_elem::COMMA);
-                        s = BeginState;
+                        s = nextchar();
                         break;
                     case '@':
                         s = VariableState;
