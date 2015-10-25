@@ -485,6 +485,14 @@ void spilt(const char* _argv)
                         addToken(token_list_elem::token_list_elem::SEPARATOR);
                         s = BeginState;
                         break;
+                    case '}':
+                        rollback();
+                        addToken(token_list_elem::token_list_elem::RAW_TEXT);
+                        nextchar();
+                        addToken(token_list_elem::token_list_elem::BLOCK_END);
+                        nextchar();
+                        break;
+                        //s = BeginState;
                     //test!!!!!!!!!!
                     case '+':case '*':
                         if (value[0]=='+'||value[0]=='*')
@@ -934,6 +942,20 @@ void spilt(const char* _argv)
                             break;
                     //!!!!!!test
                     //handle px:
+                    case '@':
+                        s = VariableState;
+                        if (value[0]=='@')
+                        {
+                            addToken(token_list_elem::token_list_elem::VAR_DEFINE);
+                        }
+                        else{
+                            rollback();
+                            addToken(token_list_elem::token_list_elem::RAW_TEXT);
+                            nextchar();
+                            addToken(token_list_elem::token_list_elem::VAR_DEFINE);
+                        }
+                        nextchar();
+                        break;
                     case 'p':
                         if (value[0]>='0'&&value[0]<='9')
                         {
