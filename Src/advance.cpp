@@ -289,7 +289,16 @@ void spilt(const char* _argv)
                         break;
                     case '@':
                         s = VariableState;
-                        addToken(token_list_elem::token_list_elem::VAR_DEFINE);
+                        if (value[0]=='@')
+                        {
+                            addToken(token_list_elem::token_list_elem::VAR_DEFINE);
+                        }
+                        else{
+                            rollback();
+                            addToken(token_list_elem::token_list_elem::RAW_TEXT);
+                            nextchar();
+                            addToken(token_list_elem::token_list_elem::VAR_DEFINE);
+                        }
                         nextchar();
                         break;
                     case '#':
@@ -301,7 +310,17 @@ void spilt(const char* _argv)
                         s = ClassState;
                         break;
                     case '{':
-                        addToken(token_list_elem::token_list_elem::BLOCK_BEGIN);
+                        if (value[0]=='{')
+                        {
+                            addToken(token_list_elem::token_list_elem::BLOCK_BEGIN);
+                        }
+                        else{
+                            rollback();
+                            addToken(token_list_elem::token_list_elem::RAW_TEXT);
+                            nextchar();
+                            addToken(token_list_elem::token_list_elem::BLOCK_BEGIN)
+                        }
+
                         //s = ElementState;
                         break;
                     case '}':
