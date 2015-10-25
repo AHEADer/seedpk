@@ -648,9 +648,9 @@ void spilt(const char* _argv)
                             s = BeginState;
                         }
                         else{
-                            rollback();
-                            addToken(token_list_elem::RAW_TEXT);
-                            nextchar();
+                            //rollback();
+                            //addToken(token_list_elem::RAW_TEXT);
+                            //nextchar();
                             addToken(token_list_elem::token_list_elem::RAW_TEXT);
                             s = BeginState;
                         }
