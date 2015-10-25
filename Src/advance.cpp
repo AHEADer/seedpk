@@ -409,7 +409,7 @@ void spilt(const char* _argv)
                                 if (c=='\n'||c=='\r')
                                 {
                                     rollback();
-                                    ungetc('\n');
+                                    ungetc('\n',stdin);
                                     nextchar();
                                     addToken(token_list_elem::COMMENT);
                                 }
@@ -641,7 +641,7 @@ void spilt(const char* _argv)
                         addToken(token_list_elem::token_list_elem::RAW_TEXT);                //not sure,test,then
                         nextchar();
                         addToken(token_list_elem::COMMA);
-                        s = nextchar();
+                        nextchar();
                         break;
                     case '@':
                         s = VariableState;
@@ -717,9 +717,9 @@ void spilt(const char* _argv)
                         break;
                     case ',':
                         rollback();
-                        addToken(SELECTOR_NAME);
+                        addToken(token_list_elem::SELECTOR_NAME);
                         nextchar();
-                        addToken(COMMA);
+                        addToken(token_list_elem::COMMA);
                         s = BeginState;
                         break;
                     default:
@@ -742,16 +742,16 @@ void spilt(const char* _argv)
                         break;
                     case ',':
                         rollback();
-                        addToken(SELECTOR_NAME);
+                        addToken(token_list_elem::SELECTOR_NAME);
                         nextchar();
-                        addToken(COMMA);
+                        addToken(token_list_elem::COMMA);
                         s = BeginState;
                         break;
                     case ';':
                         rollback();
-                        addToken(SELECTOR_NAME);
+                        addToken(token_list_elem::SELECTOR_NAME);
                         nextchar();
-                        addToken(SEPARATOR);
+                        addToken(token_list_elem::SEPARATOR);
                         s = BeginState;
                         break;
                     default:
