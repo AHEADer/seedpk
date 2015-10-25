@@ -88,21 +88,22 @@ void addToken(enum Category type)
         *p = '\0';
         p = value;
         return;
-    }
+    } else
     if(type == Space){
         p--;
         return;
-    }
+    } else
     if (type == FUNC_NAME)
     {
         printf("%s %d 0\n"," ", type/*, len*/);
+        printf("function begin!\n");
         Store_in_list(type,"");
         enum Category raw = RAW_TEXT;
         *p = '\0';
         p = value;
         Store_in_list(raw,p);
         printf("%s %d 0\n", p, raw/*, len*/);
-    }
+    } else
     if (type == COLOR)
     {
         *p = '\0';
