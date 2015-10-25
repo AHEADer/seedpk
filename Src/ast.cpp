@@ -311,15 +311,14 @@ int ast_gen::sub_block_parser(ast_node *content_node)
         case token_list_elem::SELECTOR_NAME:
         {
             ast_node *new_node = make_node(current_node, content_node, ast_node::TYPE::SELECTOR);
-            parsing = parsing->next;
             ast_node *name_node = nullptr;
             while (parsing->type != token_list_elem::BLOCK_BEGIN)
             {
                 if (parsing->type == token_list_elem::SELECTOR_NAME)
                 {
+                    parsing = parsing->next;
                     name_node = make_name(name_node, new_node);
                 }
-                parsing = parsing->next;
             }
             _var *new_name_list = new _var(_var::NEW_FLAG);
             new_name_list->next = current_node->name_list;
@@ -333,7 +332,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
             break;
         }
         case token_list_elem::BLOCK_BEGIN:
-            return -2;
+            parsing = parsing->next;
             break;
         case token_list_elem::SEPARATOR:
             parsing = parsing->next;
