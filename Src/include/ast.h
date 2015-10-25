@@ -211,7 +211,7 @@ public:
     int property_extend(ast_node *node, int mask_num, char **mask);
     int func_call_extend(ast_node *node);
     char *new_str_ref(int len);
-    const ast_node *get_ast()
+    ast_node *get_ast()
     {
         return root_node;
     }

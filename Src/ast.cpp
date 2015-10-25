@@ -15,6 +15,7 @@ void ast_node::cp(ast_node *src)
     name_list = nullptr;
 }
 
+
 ast_node *ast_gen::make_node(ast_node *current_node, ast_node *content_node, ast_node::TYPE t)
 {
     ast_node *new_node;
@@ -79,6 +80,7 @@ _operation *ast_gen::make_operation()
         current->type = _operation::INT;
         current->i_val = atoi(parsing->content);
         c = NUM;
+        parsing = parsing->next;
         break;
     }
     case token_list_elem::FLOAT:
@@ -86,6 +88,7 @@ _operation *ast_gen::make_operation()
         current->type = _operation::FLOAT;
         current->f_val = atof(parsing->content);
         c=NUM;
+        parsing = parsing->next;
         break;
     }
     case token_list_elem::COLOR:
@@ -93,6 +96,7 @@ _operation *ast_gen::make_operation()
         current->type = _operation::COLOR;
         current->i_val = strtoul(parsing->content+1, nullptr, 16);
         c=NUM;
+        parsing = parsing->next;
         break;
 
     }
@@ -108,6 +112,7 @@ _operation *ast_gen::make_operation()
         current->type = _operation::PX;
         current->f_val = atof(parsing->content);
         c=NUM;
+        parsing = parsing->next;
         break;
     }
     case token_list_elem::OPERATOR:
@@ -115,6 +120,7 @@ _operation *ast_gen::make_operation()
         current->type = _operation::OPERATOR;
         current->op = *(parsing->content);
         c=OP;
+        parsing = parsing->next;
         break;
     }
     case token_list_elem::STRING:
@@ -122,6 +128,7 @@ _operation *ast_gen::make_operation()
         current->type = _operation::STRING;
         current->s_string = parsing->content;
         c=OTHER;
+        parsing = parsing->next;
         break;
     }
     case token_list_elem::RAW_TEXT:
@@ -129,6 +136,7 @@ _operation *ast_gen::make_operation()
         current->type = _operation::RAW_TEXT;
         current->text = parsing->content;
         c=OTHER;
+        parsing = parsing->next;
         break;
     }
     default:
@@ -136,7 +144,6 @@ _operation *ast_gen::make_operation()
         return nullptr;
     }
     current->next = nullptr;
-    parsing = parsing->next;
     while (c!=OTHER)
     {
         _operation *new_current=new _operation();
@@ -327,6 +334,8 @@ int ast_gen::sub_block_parser(ast_node *content_node)
             int ret = sub_block_parser(new_content);
             if (ret)
                 return ret;
+            if (!parsing)
+                return 0;
             parsing = parsing->next;
             current_node = new_node;
             break;
@@ -344,11 +353,8 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 parsing = parsing->next;
                 _var *new_name = new _var(_var::UNDECIDED);
                 new_name->name = parsing->content;
-                if (current_node)
-                {
-                    new_name->next = current_node->name_list->next;
-                    current_node->name_list->next = new_name;
-                }
+                new_name->next = content_node->name_list->next;
+                content_node->name_list->next = new_name;
                 parsing = parsing->next;
                 if (parsing->type != token_list_elem::ASSIGN)
                     return -4;
@@ -379,7 +385,8 @@ int ast_gen::sub_block_parser(ast_node *content_node)
             ast_node *value_node = name_node;
             while (parsing->type != token_list_elem::SEPARATOR)
             {
-                value_node= new ast_node(ast_node::TYPE::OPERATION, value_node, new_node, current_node->name_list);
+                parsing = parsing->next;
+                value_node= new ast_node(ast_node::TYPE::OPERATION, value_node, new_node, content_node->name_list);
                 value_node->op = make_operation();
             }
             current_node = new_node;
@@ -392,7 +399,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 t = t->next;
             if (t->type == token_list_elem::BLOCK_BEGIN)
             {
-                ast_node *new_func = new ast_node(ast_node::TYPE::FUNC_DEFINE, nullptr, nullptr, current_node->name_list);
+                ast_node *new_func = new ast_node(ast_node::TYPE::FUNC_DEFINE, nullptr, nullptr, content_node->name_list);
                 parsing = parsing->next;
                 ast_node *name_node = make_name(nullptr, new_func);
 
@@ -428,6 +435,8 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 int flag = sub_block_parser(new_content);
                 if (flag)
                     return flag;
+                if (!parsing)
+                    return 0;
                 break;
 
             }
@@ -445,16 +454,16 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                     ast_node *arg_node = call_name;
                     while (parsing->type != token_list_elem::FUNC_ARGUMENT_END)
                     {
-                        arg_node = new ast_node(ast_node::TYPE::FUNC_ARGUMENT, arg_node, func_call, current_node->name_list);
+                        arg_node = new ast_node(ast_node::TYPE::FUNC_ARGUMENT, arg_node, func_call, content_node->name_list);
                         if (parsing->type == token_list_elem::RAW_TEXT)
                         {
-                            ast_node *v_text = new ast_node(ast_node::TYPE::RAW_TEXT, nullptr, arg_node, current_node->name_list);
+                            ast_node *v_text = new ast_node(ast_node::TYPE::RAW_TEXT, nullptr, arg_node, content_node->name_list);
                             v_text->value = parsing->content;
                             arg_node->child_node = v_text;
                         }
                         else
                         {
-                            ast_node *op = new ast_node(ast_node::TYPE::OPERATION, nullptr, arg_node, current_node->name_list);
+                            ast_node *op = new ast_node(ast_node::TYPE::OPERATION, nullptr, arg_node, content_node->name_list);
                             op->op = make_operation();
                             arg_node->child_node = op;
                         }
@@ -509,6 +518,11 @@ void ast_gen::op_extend(ast_node *node, int mask_num, char **mask)
             *(dst+3) = 0;
             node->value = ts;
         }
+        else if (t.t == _var::COLOR)
+        {
+            char *ts = new_str_ref(8);
+            sprintf(ts, "#%X", t.i_result);
+        }
         else
             node->value = result;
 
@@ -518,7 +532,6 @@ void ast_gen::op_extend(ast_node *node, int mask_num, char **mask)
 
 
 
-/*********TODO*************/
 _ret_with_type ast_gen::cal_op_string(_operation *op, _var *var_list, int mask_num, char **mask)
 {
     _operation *t;
@@ -615,7 +628,7 @@ _ret_with_type ast_gen::cal_op_string(_operation *op, _var *var_list, int mask_n
                 now += sprintf(now, "%i", t->i_val);
         }
         ret.t = _var::COLOR;
-        ret.i_result = Compute_int(expr); //compute_color
+        ret.i_result = ComputeColor(expr); //compute_color
     }
     case _operation::PX:
     {
@@ -747,6 +760,11 @@ int ast_gen::var_extend(ast_node *node, int mask_num, char **mask)
                 *(dst+2) = 'x';
                 *(dst+3) = 0;
                 node->value = ts;
+            }
+            else if (t.t == _var::COLOR)
+            {
+                char *ts = new_str_ref(8);
+                sprintf(ts, "#%X", t.i_result);
             }
             else
                 node->value = result;
