@@ -115,6 +115,7 @@ void hanle_varible(char* value_head,int right,int left)
                     {
                         have = 'y';
                         i--;
+                        left--;
 
                     }
                     break;
@@ -156,7 +157,6 @@ void hanle_varible(char* value_head,int right,int left)
                 case '{':
                     if (add == 1)
                     {
-                        Store_in_list(OPERATOR,"$");
                         Store_in_list(VAR_DEFINE,"@");
                         Store_in_list(BLOCK_BEGIN,"{");
                     }
@@ -174,16 +174,25 @@ void hanle_varible(char* value_head,int right,int left)
                     }
                     break;
                 case '}':
-                    tmp = pp;
-                    tmp--;
-                    for(;*pp!='{';pp--);
-                    pp++;
-                    Store_in_list(RAW_TEXT,create_string(pp,tmp));
-                    printf("%s %d 0\n",create_string(pp,tmp), RAW_TEXT/*, len*/);
-                    printf("!!!!!!!!!create_string:%s!!!!!!!!!!!!!!\n",create_string(pp,tmp));
-                    pp = ++tmp;
-                    Store_in_list(BLOCK_END,"}");
-                    have = 'n';
+                    if (have == 'y')
+                    {
+                        tmp = pp;
+                        tmp--;
+                        for(;*pp!='{';pp--);
+                        pp++;
+                        Store_in_list(RAW_TEXT,create_string(pp,tmp));
+                        printf("%s %d 0\n",create_string(pp,tmp), RAW_TEXT/*, len*/);
+                        //printf("!!!!!!!!!create_string:%s!!!!!!!!!!!!!!\n",create_string(pp,tmp));
+                        pp = ++tmp;
+                        Store_in_list(BLOCK_END,"}");
+                        have = 'n';
+                    }
+                    if (have == 'n')
+                    {
+                        Store_in_list(BLOCK_END,"}");
+                        printf("%s %d 0\n","}", BLOCK_END );
+                    }
+
                     break;
                 default:
                     add = -1;
@@ -1082,13 +1091,18 @@ void spilt(const char* _argv)
                         //p--;
                         *p = '\0';
                         p = value;
+                        printf("at this point right is%d,left is %d\n",right,left);
                         hanle_varible(p,right,left);
+                        right = 0;
+                        left = 1;
                         *p = '\0';
                         nextchar();
                         s = ValueState;
                         break;
                     case '}':
                         right++;
+                        if(right==1 && left == 2)
+                            printf("bingo!\n");
                         nextchar();
                         break;
                     case '@':
