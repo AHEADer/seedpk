@@ -715,6 +715,13 @@ void spilt(const char* _argv)
                         rollback();
                         s = BeginState;
                         break;
+                    case ',':
+                        rollback();
+                        addToken(SELECTOR_NAME);
+                        nextchar();
+                        addToken(COMMA);
+                        s = BeginState;
+                        break;
                     default:
                         nextchar();
                     }
@@ -731,6 +738,20 @@ void spilt(const char* _argv)
                     case '{':
                         rollback();
                         addToken(token_list_elem::SELECTOR_NAME);
+                        s = BeginState;
+                        break;
+                    case ',':
+                        rollback();
+                        addToken(SELECTOR_NAME);
+                        nextchar();
+                        addToken(COMMA);
+                        s = BeginState;
+                        break;
+                    case ';':
+                        rollback();
+                        addToken(SELECTOR_NAME);
+                        nextchar();
+                        addToken(SEPARATOR);
                         s = BeginState;
                         break;
                     default:
