@@ -726,7 +726,7 @@ void spilt(const char* _argv)
                         break;
                     case ';':
                         rollback();
-                        addToken(token_list_elem::SELECTOR_NAME);
+                        addToken(token_list_elem::FUNC_NAME);
                         nextchar();
                         addToken(token_list_elem::SEPARATOR);
                         s = BeginState;
