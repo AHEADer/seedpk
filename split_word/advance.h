@@ -483,10 +483,17 @@ void spilt(const char* _argv)
                     case '#':
                         s = ColorState;
                         break;
+
                     case '\"':
-                        s = StringState;
-                        addToken(Space);
-                        nextchar();
+                        if ((value[0] >='a'&&value[0]<='z')||(value[0]>='A'&&value[0]<='Z')||value[0]=='_')
+                        {
+                            nextchar();
+                        }
+                        else{
+                            s = StringState;
+                            addToken(Space);
+                            nextchar();
+                        }
                         break;
                     /*
                     case '(':
