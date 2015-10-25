@@ -7,7 +7,7 @@
  *
  */
 //int line = 0, column = 0;
-char is_float = 'n';
+
 char value[64];
 char c , *p = value;
 
@@ -60,7 +60,20 @@ enum State {
     ArgumentState,
     FuncState,
     StringState,
+    QuoteState,
 };
+char* create_string(char* head, char* end)
+{
+    char a = *end;
+    *end = '\0';
+    char b[64],*aa = b;
+    strcpy(b,head);
+    int i = strlen(b);
+    b[++i] = a;
+    b[i] = '\0';
+    //printf("create_string:%s\n",b );
+    return aa;
+}
 
 void Store_in_list(enum Category type, char* value)
 {
@@ -74,13 +87,62 @@ void Store_in_list(enum Category type, char* value)
     pp = pp->next;
 }
 
+void hanle_varible(char* value_head,int right,int left)
+{
+    int i,add = 0;
+    char *head = value_head;
+    char *pp = head;
+    char have = 'n';
+    if (left > right)
+    {
+        i = left - right;
+        while(*pp!='\0'){
+            switch(*pp){
+                case '@':
+                    if (have == 'y')
+                    {
+                        Store_in_list(OPERATOR,"$");
+                        Store_in_list(STRING,create_string(value,pp));
+                    }
+                    add = 1;
+                    break;
+                case '{':
+                    if (add == 1&&i>0)
+                    {
+                        have = 'y';
+                        i--;
+
+                    }
+                    break;
+                case '\"':
+                    if (have == 'y')
+                    {
+                        Store_in_list(OPERATOR,"$");
+                        printf("%s %d 0\n","$", OPERATOR/*, len*/);
+                        Store_in_list(STRING,create_string(value,pp));
+                        printf("%s %d 0\n",create_string(value,pp), STRING/*, len*/);
+                    }
+                    break;
+                default:
+                    add = -1;
+            }
+            pp++;
+        }
+    }
+}
+
+
 void nextchar()
 {
     c = getchar();
     *p++ = c;
     //column += 1;
 }
-
+void addLink()
+{
+    printf("addLink: %s %d\n","$",OPERATOR );
+    Store_in_list(OPERATOR,"$");
+}
 void addToken(enum Category type)
 {
     //int len = strlen(p);
@@ -98,6 +160,17 @@ void addToken(enum Category type)
     {
         printf("%s %d 0\n"," ", type/*, len*/);
         printf("function begin!\n");
+        Store_in_list(type,"");
+        enum Category raw = RAW_TEXT;
+        *p = '\0';
+        p = value;
+        Store_in_list(raw,p);
+        printf("%s %d 0\n", p, raw/*, len*/);
+    } else
+    if (type == PROPERTY_NAME)
+    {
+        printf("%s %d 0\n"," ", type/*, len*/);
+        printf("properity begin!\n");
         Store_in_list(type,"");
         enum Category raw = RAW_TEXT;
         *p = '\0';
@@ -163,6 +236,9 @@ void spilt(const char* _argv)
         printf("cannot read file!");
         return ;
     }
+    char is_float = 'n';
+    int left = 1;
+    int right = 0;
     enum State s = BeginState;
     while(c!=EOF){
         switch(s){
@@ -427,7 +503,7 @@ void spilt(const char* _argv)
                         break;
                     case ';':
                         rollback();
-                        if(value[0]!=' '){
+                        if(value[0]!=' '&&p!=value){
                             //printf("value is %s",value);
                             addToken(RAW_TEXT);
                         }
@@ -582,7 +658,7 @@ void spilt(const char* _argv)
                                 addToken(FUNC_NAME);
                                 nextchar();
                                 addToken(FUNC_ARGUMENT_BEGIN);
-                                s = BeginState;
+                                s = ArgumentState;
                                 break;
                             default:
                                 nextchar();
@@ -698,7 +774,7 @@ void spilt(const char* _argv)
                                 is_float = 'n';
                             }
                             else
-                            addToken(INT);    
+                            addToken(INT);
                         }
                         nextchar();
                         addToken(SEPARATOR);
@@ -835,6 +911,7 @@ void spilt(const char* _argv)
                         }
                         s = BeginState;
                         break;
+                    case ';':
                     case ',':
                         rollback();
                         if ((value[0]>='0'&&value[0]<='9')||value[0] == '.')
@@ -909,12 +986,60 @@ void spilt(const char* _argv)
                         addToken(STRING);
                         nextchar();
                         addToken(DelAll);
+                        nextchar();
                         s = ValueState;
+                        break;
+                    case '@':
+                        nextchar();
+                        switch(c){
+                            case '{':
+                                rollback();
+                                //ungetc('@',stdin);
+                                p--;
+                                addToken(STRING);
+                                printf("predict\n");
+                                ungetc('@',stdin);
+                                nextchar();
+                                nextchar();
+                                s = QuoteState;
+                                //addToken(STRING);
+                                //printf("haha\n");
+                                break;
+                            default:
+                                break;
+                        }
                         break;
                     default:
                         nextchar();
                 }
-
+                break;
+            case QuoteState:
+                switch(c){
+                    case '\"':
+                        //p--;
+                        *p = '\0';
+                        hanle_varible(value,right,left);
+                        s = ValueState;
+                        break;
+                    case '}':
+                        right++;
+                        nextchar();
+                        break;
+                    case '@':
+                        nextchar();
+                        switch(c){
+                            case '{':
+                                left++;
+                                nextchar();
+                                break;
+                            default:
+                                nextchar();
+                        }
+                        break;
+                    default:
+                        nextchar();
+                }
+                break;
             default:
                 nextchar();
         }
