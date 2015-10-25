@@ -26,9 +26,13 @@ struct _operation
         INT,
         FLOAT,
         COLOR,
+        PX,
         VAR_CALL,
         STRING,
+        RAW_TEXT,
         OPERATOR,
+        /*TEMP USE ONLY*/
+        UNDECIDED
     } type;
     union
     {
@@ -36,6 +40,7 @@ struct _operation
         float f_val;
         _var_call *var;
         char *s_string;
+        char *text;
         char op;
     };
     _operation *next;
@@ -49,8 +54,9 @@ struct _var
     {
         NEW_FLAG,
         INT,
-        FLAOT,
+        FLOAT,
         COLOR,
+        PX,
         STRING,
         FUNC,
         RAW_TEXT,
@@ -197,14 +203,14 @@ public:
     void copy_child(ast_node *dst, ast_node *src, _var *var_list);
     void extend_with_var_list(ast_node *node, _var *var_list, ast_node *func);
     void end_block(ast_node *content_node);
-    _ret_with_type var_call_in(char *var_name, int times, _var *var_list, int mask_num, char **mask);
+    _ret_with_type var_call_in(_var_call *call, _var *var_list, int mask_num, char **mask);
     _ret_with_type cal_var(char *var_name, _var *var_list, int mask_num, char **mask);
-    char *cal_string_var(char *s, _var *var_list);
     _ret_with_type cal_op_string(_operation *op, _var *var_list, int mask_num, char **mask);
     void op_extend(ast_node *node, int mask_num, char **mask);
     int var_extend(ast_node *node, int mask_num, char **mask);
     int property_extend(ast_node *node, int mask_num, char **mask);
     int func_call_extend(ast_node *node);
+    char *new_str_ref(int len);
     const ast_node *get_ast()
     {
         return root_node;

@@ -20,6 +20,7 @@ struct token_list_elem
         INT,
         FLOAT,
         COLOR,
+        PX,
         STRING,
         OPERATOR,
         PROPERTY_NAME,

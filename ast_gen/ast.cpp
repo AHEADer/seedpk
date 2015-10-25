@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "eval.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -29,6 +30,16 @@ ast_node *ast_gen::make_node(ast_node *current_node, ast_node *content_node, ast
     return new_node;
 }
 
+char *ast_gen::new_str_ref(int len)
+{
+    char *ts = new char[len];
+    str_ref *new_ref = new str_ref();
+    new_ref->str = ts;
+    new_ref->next = str_list;
+    str_list = new_ref;
+    return ts;
+}
+
 ast_node *ast_gen::make_name(ast_node *current_node, ast_node *parent_node)
 {
     ast_node *name_node = make_node(current_node, parent_node, ast_node::TYPE::NAME);
@@ -55,24 +66,33 @@ ast_node *ast_gen::make_name(ast_node *current_node, ast_node *parent_node)
 _operation *ast_gen::make_operation()
 {
     _operation *result=new _operation(), *current=result;
+
+#define NUM 0
+#define OP 1
+#define OTHER 2
+
+    int c;
     switch (parsing->type)
     {
     case token_list_elem::INT:
     {
         current->type = _operation::INT;
         current->i_val = atoi(parsing->content);
+        c = NUM;
         break;
     }
     case token_list_elem::FLOAT:
     {
         current->type = _operation::FLOAT;
         current->f_val = atof(parsing->content);
+        c=NUM;
         break;
     }
     case token_list_elem::COLOR:
     {
         current->type = _operation::COLOR;
         current->i_val = strtoul(parsing->content+1, nullptr, 16);
+        c=NUM;
         break;
 
     }
@@ -80,18 +100,28 @@ _operation *ast_gen::make_operation()
     {
         current->type = _operation::VAR_CALL;
         current->var = make_var_call();
+        c=NUM;
+        break;
+    }
+    case token_list_elem::PX:
+    {
+        current->type = _operation::PX;
+        current->f_val = atof(parsing->content);
+        c=NUM;
         break;
     }
     case token_list_elem::OPERATOR:
     {
         current->type = _operation::OPERATOR;
         current->op = *(parsing->content);
+        c=OP;
         break;
     }
     case token_list_elem::STRING:
     {
         current->type = _operation::STRING;
         current->s_string = parsing->content;
+        c=OTHER;
     }
     default:
         delete result;
@@ -99,41 +129,87 @@ _operation *ast_gen::make_operation()
     }
     current->next = nullptr;
     parsing = parsing->next;
-    while (true)
+    while (c!=OTHER)
     {
         _operation *new_current=new _operation();
         switch (parsing->type)
         {
         case token_list_elem::INT:
         {
-            new_current->type = _operation::INT;
-            new_current->i_val = atoi(parsing->content);
-            break;
+            if (c == OP)
+            {
+                new_current->type = _operation::INT;
+                new_current->i_val = atoi(parsing->content);
+                c = NUM;
+                break;
+            }
+            else
+            {
+                delete new_current;
+                return result;
+            }
         }
         case token_list_elem::FLOAT:
         {
-            new_current->type = _operation::FLOAT;
-            new_current->f_val = atof(parsing->content);
-            break;
+            if (c == OP)
+            {
+                new_current->type = _operation::FLOAT;
+                new_current->f_val = atof(parsing->content);
+                c = NUM;
+                break;
+            }
+            else
+            {
+                delete new_current;
+                return result;
+            }
         }
         case token_list_elem::COLOR:
         {
-            new_current->type = _operation::COLOR;
-            new_current->i_val = strtoul(parsing->content+1, nullptr, 16);
-            break;
-
+            if (c == OP)
+            {
+                new_current->type = _operation::COLOR;
+                new_current->i_val = strtoul(parsing->content+1, nullptr, 16);
+                c = NUM;
+                break;
+            }
+            else
+            {
+                delete new_current;
+                return result;
+            }
         }
         case token_list_elem::VAR_DEFINE:
         {
-            new_current->type = _operation::VAR_CALL;
-            new_current->var = make_var_call();
+
+            if (c == OP)
+            {
+                new_current->type = _operation::VAR_CALL;
+                new_current->var = make_var_call();
+                c = NUM;
+                break;
+            }
+            else
+            {
+                delete new_current;
+                return result;
+            }
             break;
         }
         case token_list_elem::OPERATOR:
         {
-            new_current->type = _operation::OPERATOR;
-            new_current->op = *(parsing->content);
-            break;
+            if (c == NUM)
+            {
+                new_current->type = _operation::OPERATOR;
+                new_current->op = *(parsing->content);
+                c = OP;
+                break;
+            }
+            else
+            {
+                delete new_current;
+                return result;
+            }
         }
         default:
             delete new_current;
@@ -144,6 +220,7 @@ _operation *ast_gen::make_operation()
         current->next = nullptr;
         parsing = parsing->next;
     }
+    return result;
 }
 
 _var_call *ast_gen::make_var_call()
@@ -271,19 +348,8 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 _var *t1, *t2;
                 for (t1=new_name, t2=new_name->next; !(t2->type == _var::NEW_FLAG); t1=t1->next, t2=t2->next)
                 {
-                    if (!strcmp(t2->name, new_name->name))
-                    {
-                        if (state == STATE_NORMAL)
-                        {
-                            t1->next = t2->next;
-                            delete t2;
-                        }
-                        else
-                        {
-                            current_node->name_list->next = new_name->next;
-                            delete new_name;
-                        }
-                    }
+                    t1->next = t2->next;
+                    delete t2;
                 }
                 break;
             }
@@ -300,8 +366,12 @@ int ast_gen::sub_block_parser(ast_node *content_node)
             ast_node *name_node = make_name(nullptr, new_node);
             if (parsing->type != token_list_elem::ASSIGN)
                 return -6;
-            ast_node *value_node = new ast_node(ast_node::TYPE::OPERATION, name_node, new_node, current_node->name_list);
-            value_node->op = make_operation();
+            ast_node *value_node = name_node;
+            while (parsing->type != token_list_elem::SEPARATOR)
+            {
+                value_node= new ast_node(ast_node::TYPE::OPERATION, value_node, new_node, current_node->name_list);
+                value_node->op = make_operation();
+            }
             current_node = new_node;
             break;
         }
@@ -409,7 +479,7 @@ void ast_gen::op_extend(ast_node *node, int mask_num, char **mask)
         node->type = ast_node::TYPE::RAW_TEXT;
         if (t.t == _var::STRING)
         {
-            char *ts = new char[strlen(result) + 3];
+            char *ts = new_str_ref(strlen(result) + 3);
             char *tts = ts;
             *tts++ = '"';
             while (*result)
@@ -417,10 +487,17 @@ void ast_gen::op_extend(ast_node *node, int mask_num, char **mask)
             *tts = '"';
             *(tts + 1) = 0;
             node->value = ts;
-            str_ref *new_ref = new str_ref();
-            new_ref->str = ts;
-            new_ref->next = str_list;
-            str_list = new_ref;
+        }
+        else if (t.t == _var::PX)
+        {
+            char *ts = new_str_ref(strlen(result) + 4), *dst = ts, *src = result;
+            while (*src)
+                *dst++ = *src++;
+            *dst = ' ';
+            *(dst+1) = 'p';
+            *(dst+2) = 'x';
+            *(dst+3) = 0;
+            node->value = ts;
         }
         else
             node->value = result;
@@ -429,16 +506,140 @@ void ast_gen::op_extend(ast_node *node, int mask_num, char **mask)
     }
 }
 
+
+
 /*********TODO*************/
 _ret_with_type ast_gen::cal_op_string(_operation *op, _var *var_list, int mask_num, char **mask)
 {
+    _operation *t;
+    _operation::TYPE type = _operation::UNDECIDED;
+    for (t = op; t; t = t->next)
+    {
+        if (t->type == _operation::VAR_CALL)
+        {
+            _ret_with_type var_temp = var_call_in(t->var, var_list, mask_num, mask);
+            if (var_temp.s_result)
+            {
+                switch (var_temp.t)
+                {
+                case _var::INT:
+                    t->type = _operation::INT;
+                    t->i_val = var_temp.i_result;
+                    break;
+                case _var::FLOAT:
+                    t->type = _operation::FLOAT;
+                    t->f_val = var_temp.f_result;
+                    break;
+                case _var::COLOR:
+                    t->type = _operation::COLOR;
+                    t->i_val = var_temp.i_result;
+                    break;
+                case _var::PX:
+                    t->type = _operation::PX;
+                    t->f_val = var_temp.f_result;
+                    break;
+                case _var::STRING:
+                    t->type = _operation::STRING;
+                    t->s_string = var_temp.s_result;
+                    break;
+                case _var::RAW_TEXT:
+                    t->type = _operation::RAW_TEXT;
+                    t->text = var_temp.s_result;
+                    break;
+                default:
+                    break;
+                }
+            }
+            else
+            {
+                type = _operation::VAR_CALL;
+            }
+        }
 
+        if (type == _operation::UNDECIDED)
+            type = t->type;
+        if (type == _operation::OPERATOR)
+            type = _operation::UNDECIDED;
+    }
+    _ret_with_type ret;
+    if (type == _operation::UNDECIDED || type == _operation::VAR_CALL)
+    {
+        ret.s_result = nullptr;
+        ret.t = _var::UNDECIDED;
+        return ret;
+    }
+    char *expr = new char[1024], *now = expr;
+    switch (type)
+    {
+    case _operation::INT:
+    {
+        for (t = op; t; t = t->next)
+        {
+            if (t->type == _operation::OPERATOR)
+                *now++ = t->op;
+            else
+                now += sprintf(now, "%d", t->i_val);
+        }
+        ret.t = _var::INT;
+        ret.i_result = Compute_int(expr);
+    }
+    case _operation::FLOAT:
+    {
+        for (t = op; t; t = t->next)
+        {
+            if (t->type == _operation::OPERATOR)
+                *now++ = t->op;
+            else
+                now += sprintf(now, "%f", t->f_val);
+        }
+        ret.t = _var::FLOAT;
+        ret.f_result = Compute_float(expr);
+    }
+    case _operation::COLOR:
+    {
+        for (t = op; t; t = t->next)
+        {
+            if (t->type == _operation::OPERATOR)
+                *now++ = t->op;
+            else
+                now += sprintf(now, "%i", t->i_val);
+        }
+        ret.t = _var::COLOR;
+        ret.i_result = Compute_int(expr); //compute_color
+    }
+    case _operation::PX:
+    {
+        for (t = op; t; t = t->next)
+        {
+            if (t->type == _operation::OPERATOR)
+                *now++ = t->op;
+            else
+                now += sprintf(now, "%f", t->f_val);
+        }
+        ret.t = _var::PX;
+        ret.f_result = Compute_float(expr);
+    }
+    case _operation::STRING:
+    {
+        ret.t = _var::STRING;
+        ret.s_result = op->s_string;
+    }
+    case _operation::RAW_TEXT:
+    {
+        ret.t = _var::RAW_TEXT;
+        ret.s_result = op->text;
+    }
+    default:
+        break;
+    }
+    delete expr;
+    return ret;
 }
 
 _ret_with_type ast_gen::cal_var(char *var_name, _var *var_list, int mask_num, char **mask)
 {
     int i;
-        _ret_with_type ret;
+    _ret_with_type ret;
     for (i=0; i < mask_num; ++i)
     {
         if (!strcmp(var_name, mask[i]))
@@ -468,13 +669,33 @@ _ret_with_type ast_gen::cal_var(char *var_name, _var *var_list, int mask_num, ch
     {
         ret.s_result = t->v_text;
         ret.t = t->type;
+        switch (t->type)
+        {
+        case _var::FLOAT:
+        case _var::PX:
+        {
+            ret.f_result = atof(ret.s_result);
+            break;
+        }
+        case _var::COLOR:
+        case _var::INT:
+        {
+            ret.i_result = atoi(ret.s_result);
+            break;
+        }
+        default:
+            ret.t = _var::UNDECIDED;
+            ret.s_result = nullptr;
+        }
     }
     return ret;
 }
 
-_ret_with_type ast_gen::var_call_in(char *var_name, int times, _var *var_list, int mask_num, char **mask)
+_ret_with_type ast_gen::var_call_in(_var_call *call, _var *var_list, int mask_num, char **mask)
 {
     _ret_with_type t;
+    char *var_name = call->name;
+    int times = call->undef_times;
     while (times)
     {
         t = cal_var(var_name, var_list, mask_num, mask);
@@ -490,14 +711,14 @@ int ast_gen::var_extend(ast_node *node, int mask_num, char **mask)
 {
     if (node->type == ast_node::VAR_CALL)
     {
-        _ret_with_type t = var_call_in(node->var_call->name, node->var_call->undef_times, node->name_list, mask_num, mask);
+        _ret_with_type t = var_call_in(node->var_call, node->name_list, mask_num, mask);
         char *result = t.s_result;
         if (result)
         {
             node->type = ast_node::TYPE::RAW_TEXT;
             if (t.t == _var::STRING)
             {
-                char *ts = new char[strlen(result) + 3];
+                char *ts = new_str_ref(strlen(result) + 3);
                 char *tts = ts;
                 *tts++ = '"';
                 while (*result)
@@ -505,10 +726,17 @@ int ast_gen::var_extend(ast_node *node, int mask_num, char **mask)
                 *tts = '"';
                 *(tts + 1) = 0;
                 node->value = ts;
-                str_ref *new_ref = new str_ref();
-                new_ref->str = ts;
-                new_ref->next = str_list;
-                str_list = new_ref;
+            }
+            else if (t.t == _var::PX)
+            {
+                char *ts = new_str_ref(strlen(result) + 4), *dst = ts, *src = result;
+                while (*src)
+                    *dst++ = *src++;
+                *dst = ' ';
+                *(dst+1) = 'p';
+                *(dst+2) = 'x';
+                *(dst+3) = 0;
+                node->value = ts;
             }
             else
                 node->value = result;
@@ -548,11 +776,7 @@ void ast_gen::find_merge(ast_node *node)
     }
     if (start != end)
     {
-        char *new_char = new char[len], *t_char = new_char;
-        str_ref *new_ref = new str_ref();
-        new_ref->str = new_char;
-        new_ref->next = str_list;
-        str_list = new_ref;
+        char *new_char = new_str_ref(len), *t_char = new_char;
 
         ast_node *t_node = start;
         while (t_node != end->next_node)
@@ -680,9 +904,9 @@ int ast_gen::func_call_extend(ast_node *node)
     {
         char *func_name = node->child_node->child_node->value;
         _var *t;
+        int found = 0;
         for (t = node->name_list; t; t = t->next)
         {
-            int found = 0;
             if (t->type == _var::FUNC)
             {
                 ast_node *name_node;
@@ -693,82 +917,97 @@ int ast_gen::func_call_extend(ast_node *node)
                         if ((name_node->child_node->type == ast_node::RAW_TEXT) && !(name_node->child_node->next_node))
                             if (!strcmp(func_name, name_node->child_node->value))
                             {
+                                _var *tmp_var_list;
+                                if (t->func->type == ast_node::TYPE::FUNC_DEFINE)
+                                {
+                                    _var *arg_var = new _var(_var::NEW_FLAG), *tmp=new _var(_var::UNDECIDED);
+                                    ast_node *arg_count;
+                                    arg_var->next = tmp;
+                                    for (arg_count = node->child_node->next_node; arg_count; arg_count = arg_count->next_node)
+                                        if (arg_count->type == ast_node::TYPE::FUNC_ARGUMENT)
+                                        {
+                                            _var *new_var = new _var(_var::UNDECIDED);
+                                            new_var->name = arg_count->child_node->value;
+                                            if (arg_count->child_node->next_node)
+                                            {
+                                                switch (arg_count->child_node->next_node->type)
+                                                {
+                                                case ast_node::TYPE::RAW_TEXT:
+                                                    new_var->type = _var::RAW_TEXT;
+                                                    new_var->v_text = arg_count->child_node->next_node->value;
+                                                    break;
+                                                case ast_node::TYPE::STRING:
+                                                    new_var->type = _var::STRING;
+                                                    new_var->v_string = arg_count->child_node->next_node->value;
+                                                    break;
+                                                default:
+                                                    new_var->type = _var::UNDECIDED;
+                                                    new_var->op_list = arg_count->child_node->next_node->op;
+                                                }
+                                            }
+                                            tmp->next = new_var;
+                                            tmp = new_var;
+                                        }
+                                    if (check_arg(t->func, node))
+                                    {
+                                        tmp = arg_var;
+                                        for (arg_count = node->child_node->next_node; arg_count; arg_count = arg_count->next_node)
+                                        {
+                                            if (arg_count->type == ast_node::TYPE::FUNC_ARGUMENT)
+                                            {
+                                                tmp = tmp->next;
+                                                switch (arg_count->child_node->type)
+                                                {
+                                                case ast_node::TYPE::RAW_TEXT:
+                                                    tmp->type = _var::RAW_TEXT;
+                                                    tmp->v_text = arg_count->child_node->value;
+                                                    break;
+                                                case ast_node::TYPE::STRING:
+                                                    tmp->type = _var::STRING;
+                                                    tmp->v_string = arg_count->child_node->value;
+                                                    break;
+                                                default:
+                                                    tmp->type = _var::UNDECIDED;
+                                                    tmp->op_list = arg_count->child_node->op;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    tmp_var_list = arg_var;
+                                    for (tmp = arg_var; tmp->next; tmp = tmp->next)
+                                        ;
+                                    tmp->next = node->name_list->next;
+                                }
+                                else
+                                    tmp_var_list = node->name_list;
+                                if (found)
+                                {
+                                    ast_node *tmp_node = new ast_node(ast_node::TYPE::ROOT, nullptr, node->parent_node, node->name_list);
+                                    tmp_node->next_node = nullptr;
+                                    extend_with_var_list(tmp_node, tmp_var_list, t->func);
+                                    func_call_extend(tmp_node);
+                                    ast_node *tmp_end;
+                                    for (tmp_end = tmp_node; tmp_end->next_node; tmp_end = tmp_end->next_node)
+                                        ;
+                                    tmp_end->next_node = node->next_node;
+                                    node->next_node = tmp_node;
+                                }
+                                else
+                                {
+                                    extend_with_var_list(node, tmp_var_list, t->func);
+                                    func_call_extend(node);
+                                }
                                 found = 1;
-                                break;
                             }
                     }
                 }
 
             }
-            if (found)
-                break;
         }
-        _var *tmp_var_list;
-        if (t->func->type == ast_node::TYPE::FUNC_DEFINE)
-        {
-            _var *arg_var = new _var(_var::NEW_FLAG), *tmp=new _var(_var::UNDECIDED);
-            ast_node *arg_count;
-            arg_var->next = tmp;
-            for (arg_count = node->child_node->next_node; arg_count; arg_count = arg_count->next_node)
-                if (arg_count->type == ast_node::TYPE::FUNC_ARGUMENT)
-                {
-                    _var *new_var = new _var(_var::UNDECIDED);
-                    new_var->name = arg_count->child_node->value;
-                    if (arg_count->child_node->next_node)
-                    {
-                        switch (arg_count->child_node->next_node->type)
-                        {
-                        case ast_node::TYPE::RAW_TEXT:
-                            new_var->type = _var::RAW_TEXT;
-                            new_var->v_text = arg_count->child_node->next_node->value;
-                            break;
-                        case ast_node::TYPE::STRING:
-                            new_var->type = _var::STRING;
-                            new_var->v_string = arg_count->child_node->next_node->value;
-                            break;
-                        default:
-                            new_var->type = _var::UNDECIDED;
-                            new_var->op_list = arg_count->child_node->next_node->op;
-                        }
-                    }
-                    tmp->next = new_var;
-                    tmp = new_var;
-                }
-            if (check_arg(t->func, node))
-            {
-                tmp = arg_var;
-                for (arg_count = node->child_node->next_node; arg_count; arg_count = arg_count->next_node)
-                {
-                    if (arg_count->type == ast_node::TYPE::FUNC_ARGUMENT)
-                    {
-                        tmp = tmp->next;
-                        switch (arg_count->child_node->type)
-                        {
-                        case ast_node::TYPE::RAW_TEXT:
-                            tmp->type = _var::RAW_TEXT;
-                            tmp->v_text = arg_count->child_node->value;
-                            break;
-                        case ast_node::TYPE::STRING:
-                            tmp->type = _var::STRING;
-                            tmp->v_string = arg_count->child_node->value;
-                            break;
-                        default:
-                            tmp->type = _var::UNDECIDED;
-                            tmp->op_list = arg_count->child_node->op;
-                        }
-                    }
-                }
-            }
-            tmp_var_list = arg_var;
-            for (tmp = arg_var; tmp->next; tmp = tmp->next)
-                ;
-            tmp->next = node->name_list->next;
-        }
+        if (found)
+            return -8;
         else
-            tmp_var_list = node->name_list;
-        extend_with_var_list(node, tmp_var_list, t->func);
-        func_call_extend(node);
-        return 0;
+            return 0;
     }
     else
     {
@@ -792,7 +1031,9 @@ int ast_gen::property_extend(ast_node *node, int mask_num, char **mask)
             if (tmp->type == ast_node::TYPE::VAR_CALL)
                 var_extend(tmp, mask_num, mask);
         }
-        op_extend(value_node, mask_num, mask);
+        for (value_node=name_node->next_node; value_node; value_node = value_node->next_node)
+            if (value_node->type == ast_node::TYPE::OPERATION)
+                op_extend(value_node, mask_num, mask);
 
     }
     if (node->child_node)
