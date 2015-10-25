@@ -5,8 +5,8 @@
 
 /*Global variable*/
 int i, j = 0;                                           //counter of ParentSelectorName
-char ParentSelectorName[64][128]={'\0'};            //store combination of parent Name to deal with nested combination in selector name
-char TempName[64][128]={'\0'};
+char ParentSelectorName[64][128]= {'\0'};           //store combination of parent Name to deal with nested combination in selector name
+char TempName[64][128]= {'\0'};
 int k = 0;                                          //temp counter
 int m = 0;
 
@@ -37,6 +37,7 @@ void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
 
     Node = node;
 
+    LinkStack ChildNestedStack = Init_LinkStack();
     char* buf;
     ast_node *tmp;
 
@@ -64,6 +65,35 @@ void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
             printf("Before Push INFO : entry selector and next next type is %d\n", Node->child_node->child_node->type);
 
             NestedStack = PushS(NestedStack, Node);             /*Push Child Seletor*/
+            if (Next)
+                print_node(input, Next, ChildNestedStack);
+            while (NestedStack)             /*To handle child selector*/
+            {
+                Nested = (ast_node **) malloc(sizeof(ast_node *));
+                NestedStack = PopS(NestedStack, Nested);
+
+                printf("Nested - INFO : type %d\n", (*Nested)->type);
+
+                for ( i = 0 ; i < k ; ++i )
+                {
+                    sstrjoin(ParentSelectorName[i], "", TempName[i]);
+                    printf("TempName  %s:",TempName[i]);
+                }
+                m = i;
+
+                for ( i = 0, k = 0, tmp = (*Nested)->child_node; tmp && tmp->type == ast_node::TYPE::NAME ; ++i, tmp = tmp->next_node)
+                {
+                    for (; j >= 0; --j )
+                    {
+                        sstrjoin(TempName[k], "", ParentSelectorName[i], tmp->child_node->value);
+                        printf("%s",TempName[k]);
+                        ++k;
+                    }
+                }
+                j = k;
+
+                print_node(input, (*Nested)->child_node, ChildNestedStack);
+            }
             break;
 
         case ast_node::TYPE::PROPERTY:      // -> has ast_node::TYPE::NAME and ast_node::TYPE::RAW_TEXT
@@ -80,7 +110,7 @@ void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
                 {
                     sstrjoin(buf, "", ParentSelectorName[m], strcmp(ParentSelectorName[m], "")?" ":"", Child->value);
                     if ( i > 1 )
-                         sstrjoin(buf, "", buf, ",\n");
+                        sstrjoin(buf, "", buf, ",\n");
                 }
                 Child->value = buf;
             }
@@ -107,38 +137,10 @@ void print_node(FILE *input, ast_node *node, LinkStack NestedStack)
         Node = Next;
     }
 
-    while (NestedStack)             /*To handle child selector*/
-    {
-        Nested = (ast_node **) malloc(sizeof(ast_node *));
-        NestedStack = PopS(NestedStack, Nested);
-
-        printf("Nested - INFO : type %d\n", (*Nested)->type);
-
-        for ( i = 0 ; i < k ; ++i )
-        {
-            sstrjoin(ParentSelectorName[i], "", TempName[i]);
-            printf("TempName  %s:",TempName[i]);
-        }
-        m = i;
-
-        for ( i = 0, k = 0, tmp = (*Nested)->child_node; tmp && tmp->type == ast_node::TYPE::NAME ; ++i, tmp = tmp->next_node)
-        {
-            for (; j >= 0; --j )
-            {
-                sstrjoin(TempName[k], "", ParentSelectorName[i], tmp->child_node->value);
-                printf("%s",TempName[k]);
-                ++k;
-            }
-        }
-        j = k;
-
-        LinkStack ChildNestedStack = Init_LinkStack();
-        print_node(input, (*Nested)->child_node, ChildNestedStack);
-    }
-
 }
-LinkStack Init_LinkStack(){
-     return NULL;
+LinkStack Init_LinkStack()
+{
+    return NULL;
 }
 
 LinkStack PushS(LinkStack top, ast_node *x)
@@ -162,7 +164,7 @@ LinkStack PopS(LinkStack top, ast_node **x)
         p=top;
         top=top->next;
         free(p);
-       printf("PopS - INFO : type %d\n", (*x)->type);
+        printf("PopS - INFO : type %d\n", (*x)->type);
         return top;
     }
 }
@@ -186,11 +188,12 @@ FILE *open_file(const char *filename, const char *opt)
 {
     FILE *input;
     if (!filename)
-         input = stdout;
+        input = stdout;
     else
     {
         input = fopen(filename, opt);
-        if (!input) {
+        if (!input)
+        {
             fprintf(stderr, "error: cannot open %s: %s", filename, strerror(errno));
             return NULL;
         }

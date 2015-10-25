@@ -261,48 +261,50 @@ void ast_gen::end_block(ast_node *content_node)
     _var *new_name = new _var(_var::FUNC);
     new_name->func = content_node->parent_node;
     new_name->next = content_node->name_list->next;
-    content_node->name_list->next = new_name;
-    if (content_node->parent_node->type == ast_node::TYPE::FUNC_DEFINE)
+    if (new_name->func)
     {
-        new_name->func->next_node = func_node;
-        func_node = new_name->func;
-    }
-    parsing = parsing->next;
-    func_call_extend(content_node);
-    if (new_name->func->type == ast_node::TYPE::FUNC_DEFINE)
-    {
-        int args = 0;
-        ast_node *arg;
-        for (arg = new_name->func; arg; arg = arg->next_node)
+        func_call_extend(content_node);
+        if (new_name->func->type == ast_node::TYPE::FUNC_DEFINE)
         {
-            if (arg->type == ast_node::TYPE::FUNC_ARGUMENT)
-                ++args;
-        }
-        char **mask = new char*[args];
-        args = 0;
-        for (arg = new_name->func; arg; arg = arg->next_node)
-        {
-            if (arg->type == ast_node::TYPE::FUNC_ARGUMENT)
+            int args = 0;
+            ast_node *arg;
+            for (arg = new_name->func; arg; arg = arg->next_node)
             {
-                mask[args] = arg->child_node->value;
-                ++args;
+                if (arg->type == ast_node::TYPE::FUNC_ARGUMENT)
+                    ++args;
             }
+            char **mask = new char*[args];
+            args = 0;
+            for (arg = new_name->func; arg; arg = arg->next_node)
+            {
+                if (arg->type == ast_node::TYPE::FUNC_ARGUMENT)
+                {
+                    mask[args] = arg->child_node->value;
+                    ++args;
+                }
+            }
+            property_extend(content_node, args, mask);
+            //var_extend(content_node,args, mask);
+            delete mask;
         }
-        property_extend(content_node, args, mask);
-        //var_extend(content_node,args, mask);
-        delete mask;
+        else
+        {
+            property_extend(content_node, 0, nullptr);
+            //var_extend(content_node, 0, nullptr);
+        }
+        if (content_node->parent_node->type == ast_node::TYPE::FUNC_DEFINE)
+        {
+            new_name->func->next_node = func_node;
+            func_node = new_name->func;
+        }
     }
-    else
-    {
-        property_extend(content_node, 0, nullptr);
-        //var_extend(content_node, 0, nullptr);
-    }
+    content_node->name_list->next = new_name;
 }
 
 int ast_gen::sub_block_parser(ast_node *content_node)
 {
     ast_node *current_node = nullptr;
-    while (parsing->type != token_list_elem::BLOCK_END)
+    while (parsing &&(parsing->type != token_list_elem::BLOCK_END))
     {
         switch (parsing->type)
         {
@@ -328,7 +330,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 }
             }
             _var *new_name_list = new _var(_var::NEW_FLAG);
-            new_name_list->next = current_node->name_list;
+            new_name_list->next = content_node->name_list;
             ast_node *new_content = new ast_node(ast_node::TYPE::CONTENT, name_node, new_node, new_name_list);
             name_node->next_node = new_content;
             int ret = sub_block_parser(new_content);
@@ -362,10 +364,13 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 new_name->op_list = make_operation();
                 new_name->type = _var::UNDECIDED;
                 _var *t1, *t2;
-                for (t1=new_name, t2=new_name->next; (t2) && !(t2->type == _var::NEW_FLAG); t1=t1->next, t2=t2->next)
+                for (t1=new_name, t2=new_name->next; t2 && (t2->type != _var::NEW_FLAG); t1=t1->next, t2=t2->next)
                 {
-                    t1->next = t2->next;
-                    delete t2;
+                    if (!strcmp(t2->name, new_name->name))
+                    {
+                        t1->next = t2->next;
+                        delete t2;
+                    }
                 }
                 break;
             }
@@ -522,6 +527,7 @@ void ast_gen::op_extend(ast_node *node, int mask_num, char **mask)
         {
             char *ts = new_str_ref(8);
             sprintf(ts, "#%X", t.i_result);
+            node->value = ts;
         }
         else
             node->value = result;
@@ -605,6 +611,10 @@ _ret_with_type ast_gen::cal_op_string(_operation *op, _var *var_list, int mask_n
         }
         ret.t = _var::INT;
         ret.i_result = Compute_int(expr);
+        sprintf(expr, "%d", ret.i_result);
+        ret.s_result = new_str_ref(strlen(expr)+1);
+        strcpy(ret.s_result, expr);
+        break;
     }
     case _operation::FLOAT:
     {
@@ -617,6 +627,10 @@ _ret_with_type ast_gen::cal_op_string(_operation *op, _var *var_list, int mask_n
         }
         ret.t = _var::FLOAT;
         ret.f_result = Compute_float(expr);
+        sprintf(expr, "%.1f", ret.f_result);
+        ret.s_result = new_str_ref(strlen(expr)+1);
+        strcpy(ret.s_result, expr);
+        break;
     }
     case _operation::COLOR:
     {
@@ -628,7 +642,11 @@ _ret_with_type ast_gen::cal_op_string(_operation *op, _var *var_list, int mask_n
                 now += sprintf(now, "%i", t->i_val);
         }
         ret.t = _var::COLOR;
-        ret.i_result = ComputeColor(expr); //compute_color
+        ret.i_result = ComputeColor(expr);
+        sprintf(expr, "%d", ret.i_result);
+        ret.s_result = new_str_ref(strlen(expr)+1);
+        strcpy(ret.s_result, expr);
+        break;
     }
     case _operation::PX:
     {
@@ -641,16 +659,22 @@ _ret_with_type ast_gen::cal_op_string(_operation *op, _var *var_list, int mask_n
         }
         ret.t = _var::PX;
         ret.f_result = Compute_float(expr);
+        sprintf(expr, "%.1f", ret.f_result);
+        ret.s_result = new_str_ref(strlen(expr)+1);
+        strcpy(ret.s_result, expr);
+        break;
     }
     case _operation::STRING:
     {
         ret.t = _var::STRING;
         ret.s_result = op->s_string;
+        break;
     }
     case _operation::RAW_TEXT:
     {
         ret.t = _var::RAW_TEXT;
         ret.s_result = op->text;
+        break;
     }
     default:
         break;

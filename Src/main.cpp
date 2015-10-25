@@ -27,5 +27,7 @@ int main(int argc, char **argv)
     ast_gen *tree = new ast_gen(tokens);
     tree->first_step();
 
+    CssPrint_main(tree->get_ast(), "haha");
+    delete tree;
     return 0;
 }

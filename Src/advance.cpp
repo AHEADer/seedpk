@@ -318,7 +318,7 @@ void spilt(const char* _argv)
                             rollback();
                             addToken(token_list_elem::token_list_elem::RAW_TEXT);
                             nextchar();
-                            addToken(token_list_elem::token_list_elem::BLOCK_BEGIN)
+                            addToken(token_list_elem::token_list_elem::BLOCK_BEGIN);
                         }
 
                         //s = ElementState;
@@ -471,13 +471,6 @@ void spilt(const char* _argv)
                         addToken(token_list_elem::token_list_elem::BLOCK_BEGIN);
                         nextchar();
                         break;
-                    case '}':
-                        rollback();
-                        addToken(token_list_elem::token_list_elem::RAW_TEXT);
-                        nextchar();
-                        addToken(token_list_elem::BLOCK_END);
-                        nextchar();
-                        s = BeginState;
                     case ';':
                         rollback();
                         addToken(token_list_elem::token_list_elem::RAW_TEXT);
