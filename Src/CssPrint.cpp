@@ -72,7 +72,7 @@ void print_node(FILE *input, ast_node *node, const char *now_name)
             {
                 if (c)
                 {
-                    sstrjoin(new_name,"", new_name, name_node->child_node->value);
+                    sstrjoin(new_name," ", new_name, name_node->child_node->value);
                     c=0;
                 }
                 else
