@@ -421,7 +421,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 return -6;
             ast_node *value_node = name_node;
             parsing = parsing->next;
-            while (parsing->type != token_list_elem::SEPARATOR)
+            while (parsing->type != token_list_elem::SEPARATOR && parsing->type != token_list_elem::BLOCK_END)
             {
                 value_node= new ast_node(ast_node::TYPE::OPERATION, value_node, new_node, content_node->name_list);
                 value_node->op = make_operation();
