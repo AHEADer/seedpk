@@ -7,7 +7,7 @@
 void ast_node::cp(ast_node *src)
 {
     type = src->type;
-    value = src->value;
+    cp_val(src);
     next_node = nullptr;
     child_node = nullptr;
     previous_node =nullptr;
@@ -15,6 +15,34 @@ void ast_node::cp(ast_node *src)
     name_list = nullptr;
 }
 
+void ast_node::cp_val(ast_node *src)
+{
+    if (src->type == ast_node::OPERATION)
+    {
+        _operation *now = nullptr;
+        _operation *t;
+        for (t = src->op; t; t = t->next)
+        {
+            _operation *new_op = new _operation();
+            new_op->type = t->type;
+            new_op->i_val = t->i_val;
+            if (now)
+            {
+                now->next = new_op;
+                now = new_op;
+                new_op->next = nullptr;
+            }
+            else
+            {
+                op = new_op;
+                now = new_op;
+            }
+
+        }
+    }
+    else
+        value = src->value;
+}
 
 ast_node *ast_gen::make_node(ast_node *current_node, ast_node *content_node, ast_node::TYPE t)
 {
@@ -271,14 +299,14 @@ void ast_gen::end_block(ast_node *content_node)
         {
             int args = 0;
             ast_node *arg;
-            for (arg = new_name->func; arg; arg = arg->next_node)
+            for (arg = new_name->func->child_node; arg; arg = arg->next_node)
             {
                 if (arg->type == ast_node::TYPE::FUNC_ARGUMENT)
                     ++args;
             }
             char **mask = new char*[args];
             args = 0;
-            for (arg = new_name->func; arg; arg = arg->next_node)
+            for (arg = new_name->func->child_node; arg; arg = arg->next_node)
             {
                 if (arg->type == ast_node::TYPE::FUNC_ARGUMENT)
                 {
@@ -392,9 +420,9 @@ int ast_gen::sub_block_parser(ast_node *content_node)
             if (parsing->type != token_list_elem::ASSIGN)
                 return -6;
             ast_node *value_node = name_node;
+            parsing = parsing->next;
             while (parsing->type != token_list_elem::SEPARATOR)
             {
-                parsing = parsing->next;
                 value_node= new ast_node(ast_node::TYPE::OPERATION, value_node, new_node, content_node->name_list);
                 value_node->op = make_operation();
             }
@@ -423,14 +451,16 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                     parsing = parsing->next;
                     ast_node *arg_name = new ast_node(ast_node::TYPE::RAW_TEXT, nullptr, arg, arg->name_list);
                     arg_name->value = parsing->content;
+                    arg->child_node = arg_name;
 
                     parsing = parsing->next;
                     if (parsing->type == token_list_elem::ASSIGN)
                     {
                         ast_node *v_default = new ast_node(ast_node::TYPE::OPERATION, arg_name, arg, arg->name_list);
+                        parsing = parsing->next;
                         v_default->op = make_operation();
                     }
-                    if (parsing->type == token_list_elem::COMMA)
+                    if (parsing->type == token_list_elem::COMMA || parsing->type == token_list_elem::SEPARATOR)
                         parsing = parsing->next;
                 }
                 if (parsing->type != token_list_elem::FUNC_ARGUMENT_END)
@@ -446,6 +476,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                     return flag;
                 if (!parsing)
                     return 0;
+                parsing = parsing->next;
                 break;
 
             }
@@ -457,6 +488,7 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                 ast_node *name_value = make_node(nullptr, call_name, ast_node::TYPE::RAW_TEXT);
                 func_call->child_node = call_name;
                 name_value->value = parsing->content;
+                parsing = parsing->next;
                 if (parsing->type == token_list_elem::FUNC_ARGUMENT_BEGIN)
                 {
                     parsing = parsing->next;
@@ -479,10 +511,10 @@ int ast_gen::sub_block_parser(ast_node *content_node)
                         if (parsing->type == token_list_elem::COMMA)
                             parsing = parsing->next;
                     }
-                    break;
                 }
                 parsing = parsing->next;
                 current_node = func_call;
+                break;
             }
         }
         default:
@@ -710,6 +742,12 @@ _ret_with_type ast_gen::cal_var(char *var_name, _var *var_list, int mask_num, ch
         if ((t->type != _var::TYPE::NEW_FLAG) && (t->type != _var::TYPE::FUNC) && (!strcmp(var_name, t->name)))
             break;
 
+    if (!t)
+    {
+        ret.t = _var::UNDECIDED;
+        ret.s_result = nullptr;
+        return ret;
+    }
     if (t->op_list)
     {
         ret = cal_op_string(t->op_list, var_list, mask_num, mask);
@@ -877,6 +915,8 @@ int ast_gen::check_arg(ast_node *func, ast_node *call)
 
 void ast_gen::add_new_name(_var *dst, _var *src)
 {
+    if (!src->next)
+        return;
     _var *t;
     _var *add_point;
     for (add_point = dst; add_point->next->type != _var::NEW_FLAG; add_point = add_point->next)
@@ -917,7 +957,7 @@ void ast_gen::copy_child(ast_node *dst, ast_node *src, _var *var_list)
     if (s_copying)
     {
         dst->child_node = new ast_node(s_copying->type, nullptr, dst, var_list);
-        dst->child_node->value = s_copying->value;
+        dst->child_node->cp_val(s_copying);
         copy_child(dst->child_node, s_copying, var_list);
         d_copying = dst->child_node;
         s_copying = s_copying->next_node;
@@ -927,7 +967,7 @@ void ast_gen::copy_child(ast_node *dst, ast_node *src, _var *var_list)
     while (s_copying)
     {
         d_copying->next_node = new ast_node(s_copying->type, d_copying, src, var_list);
-        d_copying->next_node->value = s_copying->value;
+        d_copying->next_node->cp_val(s_copying);
         copy_child(d_copying->next_node, s_copying, var_list);
         d_copying = d_copying->next_node;
         s_copying = s_copying->next_node;
@@ -986,10 +1026,10 @@ int ast_gen::func_call_extend(ast_node *node)
                                 _var *tmp_var_list;
                                 if (t->func->type == ast_node::TYPE::FUNC_DEFINE)
                                 {
-                                    _var *arg_var = new _var(_var::NEW_FLAG), *tmp=new _var(_var::UNDECIDED);
+                                    _var *arg_var = new _var(_var::NEW_FLAG), *tmp=arg_var;
                                     ast_node *arg_count;
                                     arg_var->next = tmp;
-                                    for (arg_count = node->child_node->next_node; arg_count; arg_count = arg_count->next_node)
+                                    for (arg_count = name_node->parent_node->child_node->next_node; arg_count; arg_count = arg_count->next_node)
                                         if (arg_count->type == ast_node::TYPE::FUNC_ARGUMENT)
                                         {
                                             _var *new_var = new _var(_var::UNDECIDED);
@@ -1040,8 +1080,8 @@ int ast_gen::func_call_extend(ast_node *node)
                                         }
                                     }
                                     tmp_var_list = arg_var;
-                                    for (tmp = arg_var; tmp->next; tmp = tmp->next)
-                                        ;
+                                    //for (tmp = arg_var; tmp->next; tmp = tmp->next)
+                                    //    ;
                                     tmp->next = node->name_list->next;
                                 }
                                 else
@@ -1053,10 +1093,9 @@ int ast_gen::func_call_extend(ast_node *node)
                                     extend_with_var_list(tmp_node, tmp_var_list, t->func);
                                     func_call_extend(tmp_node);
                                     ast_node *tmp_end;
-                                    for (tmp_end = tmp_node; tmp_end->next_node; tmp_end = tmp_end->next_node)
+                                    for (tmp_end = node; tmp_end->next_node; tmp_end = tmp_end->next_node)
                                         ;
-                                    tmp_end->next_node = node->next_node;
-                                    node->next_node = tmp_node;
+                                    tmp_end->next_node = tmp_node;
                                 }
                                 else
                                 {
@@ -1070,7 +1109,7 @@ int ast_gen::func_call_extend(ast_node *node)
 
             }
         }
-        if (found)
+        if (!found)
             return -8;
         else
             return 0;

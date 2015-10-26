@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     ast_gen *tree = new ast_gen(tokens);
     tree->first_step();
 
-    CssPrint_main(tree->get_ast(), "haha");
+    CssPrint_main(tree->get_ast(), (argc > 2)? argv[2]:"outfile.css");
     delete tree;
     return 0;
 }

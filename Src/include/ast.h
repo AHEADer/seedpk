@@ -146,6 +146,7 @@ struct ast_node
             previous_node->next_node = this;
     }
     void cp(ast_node *src);
+    void cp_val(ast_node *src);
 };
 
 class ast_gen
