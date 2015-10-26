@@ -101,6 +101,7 @@ void hanle_varible(char* value_head,int right,int left)
                 case '{':
                     if (add == 1)
                     {
+                        Store_in_list(token_list_elem::token_list_elem::OPERATOR,"$");
                         Store_in_list(token_list_elem::token_list_elem::VAR_DEFINE,"@");
                         Store_in_list(token_list_elem::token_list_elem::BLOCK_BEGIN,"{");
                     }
@@ -129,6 +130,7 @@ void hanle_varible(char* value_head,int right,int left)
                         //printf("!!!!!!!!!create_string:%s!!!!!!!!!!!!!!\n",create_string(pp,tmp));
                         pp = ++tmp;
                         Store_in_list(token_list_elem::token_list_elem::BLOCK_END,"}");
+                        Store_in_list(token_list_elem::token_list_elem::OPERATOR,"$");
                         have = 'n';
                     }
                     if (have == 'n')
